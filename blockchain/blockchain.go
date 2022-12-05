@@ -178,10 +178,7 @@ func (b *Blockchain) calcRollingAverage(newValues []*big.Int, sum *big.Int) {
 
 // GetAvgGasPrice returns the average gas price for the chain
 func (b *Blockchain) GetAvgGasPrice() *big.Int {
-	b.gpAverage.RLock()
-	defer b.gpAverage.RUnlock()
-
-	return b.gpAverage.price
+	return big.NewInt(int64(state.TxGasPrice))
 }
 
 // NewBlockchain creates a new blockchain object
@@ -201,8 +198,8 @@ func NewBlockchain(
 		txSigner:  txSigner,
 		stream:    &eventStream{},
 		gpAverage: &gasPriceAverage{
-			price: big.NewInt(0),
-			count: big.NewInt(0),
+			price: big.NewInt(int64(state.TxGasPrice)),
+			count: big.NewInt(int64(state.TxGasPrice)),
 		},
 	}
 
@@ -919,7 +916,7 @@ func (b *Blockchain) WriteBlock(block *types.Block, source string) error {
 	b.dispatchEvent(evnt)
 
 	// Update the average gas price
-	b.updateGasPriceAvgWithBlock(block)
+	// b.updateGasPriceAvgWithBlock(block)
 
 	logArgs := []interface{}{
 		"number", header.Number,

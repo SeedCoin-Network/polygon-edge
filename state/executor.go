@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/0xPolygon/polygon-edge/seedcoin"
 	"github.com/0xPolygon/polygon-edge/state/runtime/evm"
 
 	"github.com/hashicorp/go-hclog"
@@ -19,6 +20,7 @@ import (
 const (
 	spuriousDragonMaxCodeSize = 24576
 
+	TxGasPrice            uint64 = 2000000000000
 	TxGas                 uint64 = 21000 // Per transaction not creating a contract
 	TxGasContractCreation uint64 = 53000 // Per transaction that creates a contract
 )
@@ -51,6 +53,7 @@ func NewExecutor(config *chain.Params, s State, logger hclog.Logger) *Executor {
 	}
 }
 
+// TODO: here we can add configuring foundations from genesis
 func (e *Executor) WriteGenesis(alloc map[types.Address]*chain.GenesisAccount) types.Hash {
 	snap := e.state.NewSnapshot()
 	txn := NewTxn(e.state, snap)
@@ -466,11 +469,23 @@ func (t *Transition) apply(msg *types.Transaction) (*runtime.ExecutionResult, er
 		return nil, NewTransitionApplicationError(err, false)
 	}
 
+	// Retrivieng foundation address
+	foundation, retrErr := t.getFoundation(msg)
+	if retrErr != nil {
+		return nil, retrErr
+	}
+
+	// isServiceTx := *msg.To == foundationAddress
+	isServiceTx := seedcoin.DefaultFoundations.ContainsAddress(*msg.To)
+
 	// 5. the purchased gas is enough to cover intrinsic usage
 	gasLeft := msg.Gas - intrinsicGasCost
 	// Because we are working with unsigned integers for gas, the `>` operator is used instead of the more intuitive `<`
 	if gasLeft > msg.Gas {
 		return nil, NewTransitionApplicationError(ErrNotEnoughIntrinsicGas, false)
+	}
+	if isServiceTx {
+		gasLeft += intrinsicGasCost
 	}
 
 	// 6. caller has enough balance to cover asset transfer for **topmost** call
@@ -500,14 +515,33 @@ func (t *Transition) apply(msg *types.Transaction) (*runtime.ExecutionResult, er
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(result.GasLeft), gasPrice)
 	txn.AddBalance(msg.From, remaining)
 
-	// pay the coinbase
-	coinbaseFee := new(big.Int).Mul(new(big.Int).SetUint64(result.GasUsed), gasPrice)
-	txn.AddBalance(t.ctx.Coinbase, coinbaseFee)
+	// pay the foundations
+	baseComission := seedcoin.SharedCalculator().BaseComission(msg.Value)
+	seedcoinFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
+	foundationFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
+
+	txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), seedcoinFee)
+	txn.AddBalance(foundation.AddressObject(), foundationFee)
 
 	// return gas to the pool
 	t.addGasPool(result.GasLeft)
 
 	return result, nil
+}
+
+func (t *Transition) getFoundation(tx *types.Transaction) (*seedcoin.Foundation, error) {
+	txGasPrice := new(big.Float).SetInt(tx.GasPrice)
+	normalizer := new(big.Float).SetFloat64(1e-9)
+	gWeiGasPrice := new(big.Float).Mul(txGasPrice, normalizer)
+
+	// Gas price should be equal foundation id
+	foundationID, _ := gWeiGasPrice.Uint64()
+
+	foundation := seedcoin.DefaultFoundations.SearchFoundationByID(foundationID)
+	if foundation == nil {
+		return nil, errors.New("wrong gas price passed, please use correct gas price value")
+	}
+	return foundation, nil
 }
 
 func (t *Transition) Create2(
@@ -795,12 +829,26 @@ func (t *Transition) SetCodeDirectly(addr types.Address, code []byte) error {
 
 func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool) (uint64, error) {
 	cost := uint64(0)
+	calculator := seedcoin.SharedCalculator()
+	gasCost := calculator.GasCost(msg.Value)
+	if gasCost == 0 {
+		seedcoin.SharedLogger().Log("intrinsic cost: unfortunately gas cost is zero")
+		gasCost = 1
+	}
+
+	isServiceTx := seedcoin.DefaultFoundations.ContainsAddress(*msg.To)
+
+	if isServiceTx {
+		return 1, nil
+	}
+
+	seedcoin.SharedLogger().Log("intrinsic cost: %d", gasCost)
 
 	// Contract creation is only paid on the homestead fork
 	if msg.IsContractCreation() && isHomestead {
 		cost += TxGasContractCreation
 	} else {
-		cost += TxGas
+		cost += gasCost
 	}
 
 	payload := msg.Input

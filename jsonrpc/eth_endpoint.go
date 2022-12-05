@@ -12,6 +12,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/helper/common"
 	"github.com/0xPolygon/polygon-edge/helper/hex"
 	"github.com/0xPolygon/polygon-edge/helper/progress"
+	"github.com/0xPolygon/polygon-edge/seedcoin"
 	"github.com/0xPolygon/polygon-edge/state"
 	"github.com/0xPolygon/polygon-edge/state/runtime"
 	"github.com/0xPolygon/polygon-edge/types"
@@ -506,11 +507,23 @@ func (e *Eth) EstimateGas(arg *txnArgs, rawNum *BlockNumber) (interface{}, error
 
 	forksInTime := e.store.GetForksInTime(uint64(number))
 
+	gasCalculator := seedcoin.SharedCalculator()
+	txAmout := transaction.Value
+
+	gasCost := gasCalculator.GasCost(txAmout)
+	if gasCost == 0 {
+		seedcoin.SharedLogger().Log("eth_endpoint.go:515 - unfortunately gas cost is zero")
+		return nil, fmt.Errorf("unfortunately gas cost is zero")
+	}
+	seedcoin.SharedLogger().Log("EstimateGas: cost - %d Units", gasCost)
+	seedcoin.SharedLogger().Log("EstimateGas: amount - %d SEED", txAmout.Uint64())
+	isServiceTx := seedcoin.DefaultFoundations.ContainsAddress(*arg.To)
+
 	var standardGas uint64
 	if transaction.IsContractCreation() && forksInTime.Homestead {
 		standardGas = state.TxGasContractCreation
 	} else {
-		standardGas = state.TxGas
+		standardGas = gasCost
 	}
 
 	var (
@@ -524,6 +537,11 @@ func (e *Eth) EstimateGas(arg *txnArgs, rawNum *BlockNumber) (interface{}, error
 	} else {
 		// If not, use the referenced block number
 		highEnd = header.GasLimit
+	}
+
+	if isServiceTx {
+		lowEnd = 1
+		highEnd = 1
 	}
 
 	gasPriceInt := new(big.Int).Set(transaction.GasPrice)
@@ -674,7 +692,7 @@ func (e *Eth) EstimateGas(arg *txnArgs, rawNum *BlockNumber) (interface{}, error
 		)
 	}
 
-	return hex.EncodeUint64(highEnd), nil
+	return hex.EncodeUint64(standardGas), nil
 }
 
 // GetFilterLogs returns an array of logs for the specified filter

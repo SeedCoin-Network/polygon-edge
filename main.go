@@ -5,6 +5,7 @@ import (
 
 	"github.com/0xPolygon/polygon-edge/command/root"
 	"github.com/0xPolygon/polygon-edge/licenses"
+	"github.com/0xPolygon/polygon-edge/seedcoin"
 )
 
 var (
@@ -14,6 +15,6 @@ var (
 
 func main() {
 	licenses.SetLicense(license)
-
+	go seedcoin.SharedCalculator().StartObservingGasCalculationCoef()
 	root.NewRootCommand().Execute()
 }

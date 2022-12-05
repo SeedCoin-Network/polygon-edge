@@ -15,6 +15,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/blockchain"
 	"github.com/0xPolygon/polygon-edge/chain"
 	"github.com/0xPolygon/polygon-edge/network"
+	"github.com/0xPolygon/polygon-edge/seedcoin"
 	"github.com/0xPolygon/polygon-edge/state"
 	"github.com/0xPolygon/polygon-edge/txpool/proto"
 	"github.com/0xPolygon/polygon-edge/types"
@@ -52,6 +53,7 @@ var (
 	ErrMaxEnqueuedLimitReached = errors.New("maximum number of enqueued transactions reached")
 	ErrRejectFutureTx          = errors.New("rejected future tx due to low slots")
 	ErrSmartContractRestricted = errors.New("smart contract deployment restricted")
+	ErrWrongGasPrice           = errors.New("wrong gas price passed, please use correct gas price value")
 )
 
 // indicates origin of a transaction
@@ -593,6 +595,12 @@ func (p *TxPool) validateTx(tx *types.Transaction) error {
 		return ErrOversizedData
 	}
 
+	// Check if gas price setted propery
+	gasPriceError := p.checkGasPriceSettedProperly(tx)
+	if gasPriceError != nil {
+		return ErrWrongGasPrice
+	}
+
 	// Check if the transaction has a strictly positive value
 	if tx.Value.Sign() < 0 {
 		return ErrNegativeValue
@@ -699,6 +707,21 @@ func (p *TxPool) pruneAccountsWithNonceHoles() {
 			return true
 		},
 	)
+}
+
+func (p *TxPool) checkGasPriceSettedProperly(tx *types.Transaction) error {
+	txGasPrice := new(big.Float).SetInt(tx.GasPrice)
+	normalizer := new(big.Float).SetFloat64(1e-9)
+	gWeiGasPrice := new(big.Float).Mul(txGasPrice, normalizer)
+
+	// Gas price should be equal foundation id
+	foundationID, _ := gWeiGasPrice.Uint64()
+
+	if seedcoin.DefaultFoundations.ContainsFoundationWithID(foundationID) {
+		return nil
+	} else {
+		return ErrWrongGasPrice
+	}
 }
 
 // addTx is the main entry point to the pool

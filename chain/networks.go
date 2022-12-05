@@ -8,6 +8,7 @@ var chains = map[uint]string{
 	3:  "Ropsten",
 	4:  "Rinkeby",
 	5:  "Goerli",
+	37: "Seedcoin",
 	42: "Kovan",
 }
 
