@@ -20,9 +20,10 @@ import (
 const (
 	spuriousDragonMaxCodeSize = 24576
 
-	TxGasPrice            uint64 = 2000000000000
-	TxGas                 uint64 = 21000 // Per transaction not creating a contract
-	TxGasContractCreation uint64 = 53000 // Per transaction that creates a contract
+	TxGasPrice             uint64 = 2000000000000
+	TxGas                  uint64 = 21000 // Per transaction not creating a contract
+	TxGasContractCreation  uint64 = 53000 // Per transaction that creates a contract
+	TxGasContractExecution uint64 = 500000
 )
 
 var emptyCodeHashTwo = types.BytesToHash(crypto.Keccak256(nil))
@@ -475,8 +476,10 @@ func (t *Transition) apply(msg *types.Transaction) (*runtime.ExecutionResult, er
 		return nil, retrErr
 	}
 
-	// isServiceTx := *msg.To == foundationAddress
-	isServiceTx := seedcoin.DefaultFoundations.ContainsAddress(*msg.To)
+	var isServiceTx bool = false
+	if msg.To != nil {
+		isServiceTx = seedcoin.DefaultFoundations.ContainsAddress(*msg.To)
+	}
 
 	// 5. the purchased gas is enough to cover intrinsic usage
 	gasLeft := msg.Gas - intrinsicGasCost
@@ -517,11 +520,14 @@ func (t *Transition) apply(msg *types.Transaction) (*runtime.ExecutionResult, er
 
 	// pay the foundations
 	baseComission := seedcoin.SharedCalculator().BaseComission(msg.Value)
-	seedcoinFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
-	foundationFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
-
-	txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), seedcoinFee)
-	txn.AddBalance(foundation.AddressObject(), foundationFee)
+	if foundation != nil {
+		seedcoinFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
+		foundationFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
+		txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), seedcoinFee)
+		txn.AddBalance(foundation.AddressObject(), foundationFee)
+	} else {
+		txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), baseComission)
+	}
 
 	// return gas to the pool
 	t.addGasPool(result.GasLeft)
@@ -530,6 +536,9 @@ func (t *Transition) apply(msg *types.Transaction) (*runtime.ExecutionResult, er
 }
 
 func (t *Transition) getFoundation(tx *types.Transaction) (*seedcoin.Foundation, error) {
+	if tx.To == nil {
+		return nil, nil
+	}
 	txGasPrice := new(big.Float).SetInt(tx.GasPrice)
 	normalizer := new(big.Float).SetFloat64(1e-9)
 	gWeiGasPrice := new(big.Float).Mul(txGasPrice, normalizer)
@@ -539,7 +548,8 @@ func (t *Transition) getFoundation(tx *types.Transaction) (*seedcoin.Foundation,
 
 	foundation := seedcoin.DefaultFoundations.SearchFoundationByID(foundationID)
 	if foundation == nil {
-		return nil, errors.New("wrong gas price passed, please use correct gas price value")
+		seedcoin.SharedLogger().Log("executor.go:551 - wrong gas price passed, please use correct gas price value")
+		return seedcoin.SeedcoinFoundation(), nil
 	}
 	return foundation, nil
 }
@@ -831,12 +841,18 @@ func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool) (u
 	cost := uint64(0)
 	calculator := seedcoin.SharedCalculator()
 	gasCost := calculator.GasCost(msg.Value)
-	if gasCost == 0 {
+	if msg.Value.Uint64() == 0 && gasCost == 0 && msg.IsContractCreation() {
+		gasCost = TxGasContractCreation
+		return gasCost, nil
+	} else if gasCost == 0 {
 		seedcoin.SharedLogger().Log("intrinsic cost: unfortunately gas cost is zero")
-		gasCost = 1
+		gasCost = 500000
 	}
 
-	isServiceTx := seedcoin.DefaultFoundations.ContainsAddress(*msg.To)
+	var isServiceTx bool = false
+	if msg.To != nil {
+		isServiceTx = seedcoin.DefaultFoundations.ContainsAddress(*msg.To)
+	}
 
 	if isServiceTx {
 		return 1, nil

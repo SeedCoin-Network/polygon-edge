@@ -595,10 +595,13 @@ func (p *TxPool) validateTx(tx *types.Transaction) error {
 		return ErrOversizedData
 	}
 
-	// Check if gas price setted propery
-	gasPriceError := p.checkGasPriceSettedProperly(tx)
-	if gasPriceError != nil {
-		return ErrWrongGasPrice
+	if tx.To != nil {
+		// Check if gas price setted propery
+		gasPriceError := p.checkGasPriceSettedProperly(tx)
+		if gasPriceError != nil {
+			seedcoin.SharedLogger().Log("txpool.go:602 - wrong gas price passed, please use correct gas price value")
+			return ErrWrongGasPrice
+		}
 	}
 
 	// Check if the transaction has a strictly positive value
@@ -661,6 +664,9 @@ func (p *TxPool) validateTx(tx *types.Transaction) error {
 	}
 
 	if tx.Gas < intrinsicGas {
+		seedcoin.SharedLogger().Log("tx.Gas < intrinsicGas")
+		seedcoin.SharedLogger().Log("tx.Gas = %d", tx.Gas)
+		seedcoin.SharedLogger().Log("intrinsicGas = %d", intrinsicGas)
 		return ErrIntrinsicGas
 	}
 
@@ -720,6 +726,7 @@ func (p *TxPool) checkGasPriceSettedProperly(tx *types.Transaction) error {
 	if seedcoin.DefaultFoundations.ContainsFoundationWithID(foundationID) {
 		return nil
 	} else {
+		seedcoin.SharedLogger().Log("txpool.go:729 - wrong gas price passed, please use correct gas price value")
 		return ErrWrongGasPrice
 	}
 }

@@ -512,12 +512,14 @@ func (e *Eth) EstimateGas(arg *txnArgs, rawNum *BlockNumber) (interface{}, error
 
 	gasCost := gasCalculator.GasCost(txAmout)
 	if gasCost == 0 {
-		seedcoin.SharedLogger().Log("eth_endpoint.go:515 - unfortunately gas cost is zero")
-		return nil, fmt.Errorf("unfortunately gas cost is zero")
+		gasCost = state.TxGasContractExecution
 	}
 	seedcoin.SharedLogger().Log("EstimateGas: cost - %d Units", gasCost)
 	seedcoin.SharedLogger().Log("EstimateGas: amount - %d SEED", txAmout.Uint64())
-	isServiceTx := seedcoin.DefaultFoundations.ContainsAddress(*arg.To)
+	var isServiceTx bool = false
+	if arg.To != nil {
+		isServiceTx = seedcoin.DefaultFoundations.ContainsAddress(*arg.To)
+	}
 
 	var standardGas uint64
 	if transaction.IsContractCreation() && forksInTime.Homestead {
@@ -530,6 +532,10 @@ func (e *Eth) EstimateGas(arg *txnArgs, rawNum *BlockNumber) (interface{}, error
 		lowEnd  = standardGas
 		highEnd uint64
 	)
+
+	if transaction.IsContractCreation() && forksInTime.Homestead {
+		highEnd = state.TxGasContractCreation
+	}
 
 	// If the gas limit was passed in, use it as a ceiling
 	if transaction.Gas != 0 && transaction.Gas >= standardGas {
