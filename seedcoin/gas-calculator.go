@@ -17,6 +17,8 @@ type GasCalculator struct {
 	ticker             *time.Ticker
 }
 
+const GasPriceGwei = 200
+
 var singletonCalculator *GasCalculator
 
 const (
@@ -82,7 +84,7 @@ func (g *GasCalculator) GasCost(amount *big.Int) uint64 {
 	bigNormalizer := new(big.Float).SetPrec(prec).SetFloat64(1e-9)
 	bigNormalizedAmount := new(big.Float).SetPrec(prec).Mul(bigFloatAmount, bigNormalizer)
 	bigResult := new(big.Float).SetPrec(prec).Mul(bigNormalizedAmount, bigLambda)
-	bigGasPrice := new(big.Float).SetPrec(prec).SetUint64(2000)
+	bigGasPrice := new(big.Float).SetPrec(prec).SetUint64(GasPriceGwei)
 	bigTotalAmount := new(big.Float).SetPrec(prec).Quo(bigResult, bigGasPrice)
 
 	plainGasPrice, _ := bigTotalAmount.Uint64()

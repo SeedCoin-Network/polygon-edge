@@ -20,7 +20,7 @@ import (
 const (
 	spuriousDragonMaxCodeSize = 24576
 
-	TxGasPrice             uint64 = 2000000000000
+	TxGasPrice             uint64 = seedcoin.GasPriceGwei * 1000000000
 	TxGas                  uint64 = 21000 // Per transaction not creating a contract
 	TxGasContractCreation  uint64 = 53000 // Per transaction that creates a contract
 	TxGasContractExecution uint64 = 500000
@@ -518,16 +518,21 @@ func (t *Transition) apply(msg *types.Transaction) (*runtime.ExecutionResult, er
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(result.GasLeft), gasPrice)
 	txn.AddBalance(msg.From, remaining)
 
-	// pay the foundations
-	baseComission := seedcoin.SharedCalculator().BaseComission(msg.Value)
-	if foundation != nil {
-		seedcoinFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
-		foundationFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
-		txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), seedcoinFee)
-		txn.AddBalance(foundation.AddressObject(), foundationFee)
-	} else {
-		txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), baseComission)
+	if msg.Input == nil || len(msg.Input) == 0 {
+		// pay the foundations
+		baseComission := seedcoin.SharedCalculator().BaseComission(msg.Value)
+		if foundation != nil {
+			seedcoinFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
+			foundationFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
+			txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), seedcoinFee)
+			txn.AddBalance(foundation.AddressObject(), foundationFee)
+		} else {
+			txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), baseComission)
+		}
 	}
+	/*
+		Extra gas burned and removed from supply
+	*/
 
 	// return gas to the pool
 	t.addGasPool(result.GasLeft)
@@ -846,7 +851,7 @@ func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool) (u
 		return gasCost, nil
 	} else if gasCost == 0 {
 		seedcoin.SharedLogger().Log("intrinsic cost: unfortunately gas cost is zero")
-		gasCost = 500000
+		gasCost = TxGasContractExecution
 	}
 
 	var isServiceTx bool = false

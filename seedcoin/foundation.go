@@ -6,6 +6,8 @@ import (
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
+const SeedcoinID = 200
+
 type Foundation struct {
 	Id      uint64
 	Address string
@@ -26,17 +28,17 @@ type Foundations []Foundation
 
 var DefaultFoundations Foundations = Foundations{
 	{
-		Id:      2000,
+		Id:      SeedcoinID,
 		Address: "0xc425C9564906f4B8f8a849C5C1F2b4272534C6D7",
 		Name:    "Seedcoin Foundation",
 	},
 	{
-		Id:      2001,
+		Id:      199,
 		Address: "0x6965DF0B63B73E0060ca9ad1EB563561675219BF",
 		Name:    "AARP Foundation",
 	},
 	{
-		Id:      2002,
+		Id:      198,
 		Address: "0x4dD3CBD243A5982B2dF9889B283b122855194a30",
 		Name:    "Adelson Foundation",
 	},
@@ -86,5 +88,5 @@ func (f Foundation) AddressObject() types.Address {
 }
 
 func SeedcoinFoundation() *Foundation {
-	return DefaultFoundations.SearchFoundationByID(2000)
+	return DefaultFoundations.SearchFoundationByID(SeedcoinID)
 }
