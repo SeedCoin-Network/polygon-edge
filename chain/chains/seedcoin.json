@@ -1,7 +1,23 @@
 {
-    "name": "Seedcoin",
+    "name": "SeedCoin",
+    "genesis": {
+        "nonce": "0x0000000000000000",
+        "timestamp": "0x0",
+        "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000f90127f90120f846941f210d72e75f0868d5c82981bd1782f285922ac6b0add14d9e54c0e7ca8f9fa7c23e49db1c9816fb5cf95c8fb8b042991f4450eec9c12a5ded33a4968f469cac2c8064d99bf84694c993fe12d87f43441dfed45338f4723cc859764fb0b2baaae402294b231253d0fde70482eec5b6f7a7c3947195e70dda8e4e5923fc1b8a89fb32dd2021b45321a134937e90f84694c78d9e3ffee618f35922c05c3e4f59eb1e2d02edb0b7e34da5046fc263f5207a3d9dfa9e04ec213edee5f0bfbf49925b8fd25e156fbb261d40f9ad1c330f96c7d47b5fbac8f84694c06ec6a405a13ad8e06eeeae39279c577e237883b088645f16354c131e7fde5e8bc47fbe81ef315949d9a13d32c4784c49c752df2167b9006ba60de07040bf0f4d3a632f5680c28080",
+        "gasLimit": "0xe8d4a51000",
+        "difficulty": "0x1",
+        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "coinbase": "0x0000000000000000000000000000000000000000",
+        "alloc": {
+            "0xC78d9E3FfEE618f35922c05c3e4f59eb1E2D02Ed": {
+                "balance": "0x1bc16d674ec80000000000000"
+            }
+        },
+        "number": "0x0",
+        "gasUsed": "0x70000",
+        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
     "params": {
-        "chainID":37,
         "forks": {
             "homestead": 0,
             "byzantium": 0,
@@ -12,32 +28,17 @@
             "EIP158": 0,
             "EIP155": 0
         },
+        "chainID": 37,
         "engine": {
             "ibft": {
-                "epoch": 50,
+                "epochSize": 50,
                 "type": "PoA",
                 "validator_type": "bls"
             }
-        }
+        },
+        "blockGasTarget": 0
     },
-    "genesis": {
-        "nonce": "100000",
-        "gasLimit": "1000000000000",
-        "difficulty": "0x1",
-        "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000f90127f90120f8469478a51c22183585ecb3bf913e57354ff85c2e7c22b0a9043f26a23684a7502d0bb610acc1a6d8f1a8a99e2fb08140f80dddfc07d38d93d8ce77c2cb037ad0a5367e1c14461bf846942a3d170165cf51274a453e62cc1d53b678e4642bb0b0c0916c7730754c6d1da5c63375dbd28cb5ebab82007aea7860d9b6bbab1001c2d8bcf7cc8ff36a851f16fb27e0dc7bf846949239e0c7ac7ff91ca0bea0d96f0ba703f5bf3f16b0915b3ff0739059ca3c21889863c4e659aa229c288e60c8fa1a1a2d01d4e6a79b7cb330a7c334088eb31f7d36f56c14fdf8469444894efde45fa8237d9e1e86e5fe3e46efabd553b0ac59d90bd067c12861a7af224c1489bd0a2ffca094de9f5caa435b3b4188e0c0e4cecb0d638b39df61532d1dd68acd9a80c28080",
-        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-        "coinbase": "0xE85E0F5b64198CA9576e9e121bC8aBA5837fBD7f",
-        "alloc": {
-            "0xd88BB06D9dF008c73DfA6C5C957803C0C0465762": {
-                "balance": "1000000000000000000000000"
-            },
-            "0x9b6c542C0c591A2D06d37f462658484172F35964": {
-                "balance": "1000000000000000000000000"
-            },
-            "0xefb99bd12AB243Ee95BD3B8023dbAc769f56BB7A": {
-                "balance": "1000000000000000000000000"
-            }
-        }
-    },
-    "bootnodes": []
+    "bootnodes": [
+        "/dns4/n1.seedcoin.network/tcp/10002/p2p/16Uiu2HAmGBqSEifwj1Mdw5rZrC9U6jNrEG2KKwLL22cZASwUuhYX"
+    ]
 }

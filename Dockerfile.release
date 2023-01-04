@@ -1,10 +1,19 @@
-FROM alpine:3.14
+FROM ubuntu:22.04
 
-RUN set -x \
-    && apk add --update --no-cache \
-       ca-certificates \
-    && rm -rf /var/cache/apk/*
-COPY polygon-edge /usr/local/bin/
+RUN apt-get update
+RUN apt-get upgrade -y
+WORKDIR /home
+RUN apt-get install golang-go -y
+RUN apt-get install git -y
+RUN git clone https://github.com/khanukov/seedcoin-network/
+WORKDIR /home/seedcoin-network
+RUN go build -o seedcoin-network-exec main.go
+RUN mv seedcoin-network-exec /usr/local/bin
+WORKDIR /home
+RUN cp seedcoin-network/chain/chains/seedcoin.json genesis.json
+RUN seedcoin-network-exec secrets init --data-dir data-dir
+COPY --chmod=755 ./run-script.sh .
 
-EXPOSE 8545 9632 1478
-ENTRYPOINT ["polygon-edge"]
+
+EXPOSE 10000 10002 10004
+ENTRYPOINT ["./run-script.sh"]
