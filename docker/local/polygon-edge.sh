@@ -4,13 +4,17 @@ set -e
 
 POLYGON_EDGE_BIN=./polygon-edge
 GENESIS_BOOT_BOOTNODE_REPLACER_BIN=/polygon-edge/genesis-bootnode-replacer
+GENESIS_PATH=/genesis/genesis.json
 
 case "$1" in
 
    "init")
-      echo "Generating secrets..."
-      secrets=$("$POLYGON_EDGE_BIN" secrets init --num 4 --data-dir data- --json)
-      echo "Secrets have been successfully generated"
+      if [ -f "$GENESIS_PATH" ]; then
+          echo "Secrets have already been generated."
+      else
+          echo "Generating secrets..."
+          secrets=$("$POLYGON_EDGE_BIN" secrets init --num 4 --data-dir data- --json)
+          echo "Secrets have been successfully generated"
 
       echo "Generating genesis file..."
       "$POLYGON_EDGE_BIN" genesis \
@@ -34,6 +38,11 @@ case "$1" in
       go run /polygon-edge/genesis-bootnode-replacer/main.go "/genesis/genesis.json" "/genesis/bootnode-source.json"
       ;;
    *)
+      until [ -f "$GENESIS_PATH" ]
+      do
+          echo "Waiting 1s for genesis file $GENESIS_PATH to be created by init container..."
+          sleep 1
+      done
       echo "Executing polygon-edge..."
       exec "$POLYGON_EDGE_BIN" "$@"
       ;;
