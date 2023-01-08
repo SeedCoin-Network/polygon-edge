@@ -1,12 +1,12 @@
 
 ![Banner](.github/banner.jpg)
-## Polygon Edge
+## SeedCoin-Network
 
-Polygon Edge is a modular and extensible framework for building Ethereum-compatible blockchain networks.
+The SeedCoin-Network is a blockchain running with care for the environment and future. We enable teams to develop great user-friendly dApps, use Smart Contracts, and create NFTs.
 
-To find out more about Polygon, visit the [official website](https://polygon.technology/).
+To find out more about SeedCoin-Network, visit the [official website](https://seedcoin.network/).
 
-WARNING: This is a work in progress so architectural changes may happen in the future. The code has not been audited yet, so please contact [Polygon Edge team](mailto:edge@polygon.technology) if you would like to use it in production.
+WARNING: This is a work in progress so architectural changes may happen in the future. The code has not been audited yet, so please contact [SeedCoin-Network team](mailto:support@seedcoin.network) if you would like to use it in production.
 
 ## Documentation 📝
 
