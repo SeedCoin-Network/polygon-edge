@@ -23,6 +23,6 @@ RUN chmod 0777 /genesis/seedcoin-template.json
 RUN chmod 0777 polygon-edge.sh
 
 # Expose json-rpc, libp2p and grpc ports
-EXPOSE 8545 9632 1478
+EXPOSE 8545 9632 1478 5001
 
 ENTRYPOINT ["./polygon-edge.sh"]
