@@ -22,8 +22,8 @@ const (
 	spuriousDragonMaxCodeSize = 24576
 
 	TxGasPrice             uint64 = seedcoin.GasPriceGwei * 1000000000
-	TxGas                  uint64 = 21000 // Per transaction not creating a contract
-	TxGasContractCreation  uint64 = 53000 // Per transaction that creates a contract
+	TxGas                  uint64 = 21000   // Per transaction not creating a contract
+	TxGasContractCreation  uint64 = 5300000 // Per transaction that creates a contract
 	TxGasContractExecution uint64 = 500000
 )
 
@@ -540,7 +540,7 @@ func (t *Transition) getFoundation(tx *types.Transaction) (*seedcoin.Foundation,
 
 	foundation := seedcoin.DefaultFoundations.SearchFoundationByID(foundationID)
 	if foundation == nil {
-		seedcoin.SharedLogger().Log("executor.go:551 - wrong gas price passed, please use correct gas price value")
+		seedcoin.SharedLogger().Log("executor.go:551 - wrong gas price passed, please use correct gas price value, we using default foundation 200")
 		return seedcoin.SeedcoinFoundation(), nil
 	}
 	return foundation, nil
@@ -868,7 +868,7 @@ func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool) (u
 		gasCost = TxGasContractCreation
 		return gasCost, nil
 	} else if gasCost == 0 {
-		seedcoin.SharedLogger().Log("intrinsic cost: unfortunately gas cost is zero")
+		seedcoin.SharedLogger().Log("intrinsic cost: unfortunately gas cost is zero, propably contract execution")
 		gasCost = TxGasContractExecution
 	}
 
