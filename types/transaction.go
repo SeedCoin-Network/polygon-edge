@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math/big"
 	"sync/atomic"
 
@@ -22,6 +23,16 @@ type Transaction struct {
 
 	// Cache
 	size atomic.Value
+}
+
+func (t *Transaction) DebugDescription() string {
+	separator := "\n===============\n"
+	fromStr := fmt.Sprintf("FROM: %v", t.From.String())
+	toStr := fmt.Sprintf("TO: %v", t.To.String())
+	amntStr := fmt.Sprintf("AMOUNT: %d", t.Value.Uint64())
+	gasStr := fmt.Sprintf("GAS_PRICE: %d, GAS_UNITS: %d", t.GasPrice.Uint64(), t.Gas)
+	result := separator + fromStr + toStr + amntStr + gasStr + separator
+	return result
 }
 
 // IsContractCreation checks if tx is contract creation
