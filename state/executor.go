@@ -23,7 +23,7 @@ const (
 
 	TxGasPrice             uint64 = seedcoin.GasPriceGwei * 1000000000
 	TxGas                  uint64 = 21000   // Per transaction not creating a contract
-	TxGasContractCreation  uint64 = 5300000 // Per transaction that creates a contract
+	TxGasContractCreation  uint64 = 53000 // Per transaction that creates a contract
 	TxGasContractExecution uint64 = 500000
 )
 
