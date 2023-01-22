@@ -21,6 +21,7 @@ import (
 const (
 	spuriousDragonMaxCodeSize = 24576
 
+	TxServicePrice         uint64 = 1
 	TxGasPrice             uint64 = seedcoin.GasPriceGwei * 1000000000
 	TxGas                  uint64 = 21000 // Per transaction not creating a contract
 	TxGasContractCreation  uint64 = 53000 // Per transaction that creates a contract
@@ -508,14 +509,10 @@ func (t *Transition) apply(msg *types.Transaction) (*runtime.ExecutionResult, er
 	if msg.Input == nil || len(msg.Input) == 0 {
 		// pay the foundations
 		baseComission := seedcoin.SharedCalculator().BaseComission(msg.Value)
-		if foundation != nil {
-			seedcoinFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
-			foundationFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
-			txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), seedcoinFee)
-			txn.AddBalance(foundation.AddressObject(), foundationFee)
-		} else {
-			txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), baseComission)
-		}
+		seedcoinFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
+		foundationFee := new(big.Int).Quo(baseComission, new(big.Int).SetInt64(2))
+		txn.AddBalance(seedcoin.SeedcoinFoundation().AddressObject(), seedcoinFee)
+		txn.AddBalance(foundation.AddressObject(), foundationFee)
 	}
 	/*
 		Extra gas burned and removed from supply
