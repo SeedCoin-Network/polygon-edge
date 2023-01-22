@@ -23,7 +23,7 @@ case "$1" in
             --name Seedcoin \
             --chain-id 37 \
             --premine 0xefb99bd12AB243Ee95BD3B8023dbAc769f56BB7A:137438953472000000000000000000 \
-            --block-gas-limit 1000000000 \
+            --block-gas-limit 1000000000000 \
             --epoch-size 50 \
             --ibft-validators-prefix-path data- \
             --bootnode /dns4/node-1/tcp/1478/p2p/$(echo $secrets | jq -r '.[0] | .node_id') \
