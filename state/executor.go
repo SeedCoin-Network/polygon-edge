@@ -865,7 +865,6 @@ func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool) (u
 		gasCost = TxGasContractCreation
 		return gasCost, nil
 	} else if gasCost == 0 {
-		seedcoin.SharedLogger().Log("intrinsic cost: unfortunately gas cost is zero, propably contract execution, tx:%v", msg.DebugDescription())
 		gasCost = TxGasContractExecution
 	}
 
@@ -877,8 +876,6 @@ func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool) (u
 	if isServiceTx {
 		return 1, nil
 	}
-
-	seedcoin.SharedLogger().Log("intrinsic cost: %d", gasCost)
 
 	// Contract creation is only paid on the homestead fork
 	if msg.IsContractCreation() && isHomestead {

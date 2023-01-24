@@ -23,7 +23,7 @@ var singletonCalculator *GasCalculator
 
 const (
 	oracleEndpoint    = "https://api.seedcoin.network/oracle/price"
-	observingInterval = time.Second * 30
+	observingInterval = time.Second * 120
 )
 
 func SharedCalculator() *GasCalculator {
