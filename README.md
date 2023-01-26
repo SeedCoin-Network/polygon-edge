@@ -11,16 +11,27 @@ WARNING: This is a work in progress so architectural changes may happen in the f
 ## Documentation 📝
 
 apt-get update
+
 apt-get upgrade -y
+
 cd /home/
+
 apt-get install golang-go -y
+
 git clone https://github.com/SeedCoin-Network/seedcoin-network
+
 cd seedcoin-network/
+
 go build -o seedcoin-network main.go
+
 sudo mv seedcoin-network /usr/local/bin
+
 sudo mv chain/chains/seedcoin.json ../genesis.json
+
 cd ..
+
 seedcoin-network server --data-dir ./data-dir --chain genesis.json --grpc-address 0.0.0.0:10000 --libp2p 0.0.0.0:10002 --jsonrpc 0.0.0.0:10004
+
 
 ---
 
