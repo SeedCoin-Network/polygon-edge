@@ -537,7 +537,6 @@ func (t *Transition) getFoundation(tx *types.Transaction) (*seedcoin.Foundation,
 
 	foundation := seedcoin.DefaultFoundations.SearchFoundationByID(foundationID)
 	if foundation == nil {
-		seedcoin.SharedLogger().Log("executor.go:551 - wrong gas price passed, please use correct gas price value, we using default foundation 200, tx - %v", tx.DebugDescription())
 		return seedcoin.SeedcoinFoundation(), nil
 	}
 	return foundation, nil
