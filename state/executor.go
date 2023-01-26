@@ -537,7 +537,6 @@ func (t *Transition) getFoundation(tx *types.Transaction) (*seedcoin.Foundation,
 
 	foundation := seedcoin.DefaultFoundations.SearchFoundationByID(foundationID)
 	if foundation == nil {
-		seedcoin.SharedLogger().Log("executor.go:551 - wrong gas price passed, please use correct gas price value, we using default foundation 200, tx - %v", tx.DebugDescription())
 		return seedcoin.SeedcoinFoundation(), nil
 	}
 	return foundation, nil
@@ -860,7 +859,8 @@ func (t *Transition) GetRefund() uint64 {
 func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool) (uint64, error) {
 	cost := uint64(0)
 	calculator := seedcoin.SharedCalculator()
-	gasCost := calculator.GasCost(msg.Value)
+	// WARNING: нил недопустим, тут нужно как-то передать хэдер блока
+	gasCost := calculator.GasCost(msg.Value, true, nil)
 	if msg.Value.Uint64() == 0 && gasCost == 0 && msg.IsContractCreation() {
 		gasCost = TxGasContractCreation
 		return gasCost, nil

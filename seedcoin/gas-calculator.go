@@ -1,30 +1,23 @@
 package seedcoin
 
 import (
-	"encoding/json"
-	"io"
 	"math"
 	"math/big"
-	"net/http"
 	"sync"
-	"time"
+
+	"github.com/0xPolygon/polygon-edge/types"
 )
 
 var gasCalculatorOnceSyncPoint sync.Once
 
-type GasCalculator struct {
-	GasCalculationCoef float64
-	ticker             *time.Ticker
-}
-
-const GasPriceGwei = 200
-
-var singletonCalculator *GasCalculator
+type GasCalculator struct{}
 
 const (
-	oracleEndpoint    = "https://api.seedcoin.network/oracle/price"
-	observingInterval = time.Second * 120
+	GasPriceGwei = 200
+	prec         = 512
 )
+
+var singletonCalculator *GasCalculator
 
 func SharedCalculator() *GasCalculator {
 	if singletonCalculator == nil {
@@ -37,44 +30,23 @@ func SharedCalculator() *GasCalculator {
 	return singletonCalculator
 }
 
-func (g *GasCalculator) StartObservingGasCalculationCoef() {
-	g.ticker = time.NewTicker(observingInterval)
-	for range g.ticker.C {
-		updatingError := g.UpdateGasCalculationCoef()
-		if updatingError != nil {
-			SharedLogger().Log("%s", updatingError)
-			println(updatingError)
+func (g *GasCalculator) GasCost(amount *big.Int, isExecutionCalculation bool, header *types.Header) uint64 {
+	lastPrice, err := LastPrice()
+	var x float64
+	if header != nil {
+		priceFromBlock := ExtractPriceFromBlockValue(header.CoinPrice)
+		x = priceFromBlock
+	} else {
+		if err != nil {
+			SharedLogger().Log(
+				"Couldn't load last price from file%s",
+				"FAIL",
+			)
+			x = 1
+		} else {
+			x = lastPrice
 		}
 	}
-}
-
-func (g *GasCalculator) UpdateGasCalculationCoef() error {
-	resp, reqErr := http.Get(oracleEndpoint)
-	if reqErr != nil {
-		return reqErr
-	}
-
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		return readErr
-	}
-
-	var data FeePayload
-	parseErr := json.Unmarshal(body, &data)
-	if parseErr != nil {
-		return parseErr
-	}
-
-	g.GasCalculationCoef = data.Price
-	SharedLogger().Log("Received price: %f", data.Price)
-
-	return nil
-}
-
-func (g *GasCalculator) GasCost(amount *big.Int) uint64 {
-	const prec = 512
-
-	x := g.GasCalculationCoef
 	// λ=0.01+0.98/(1+(x+1)^{24})
 	value := (1.0 + math.Pow((x+1.0), 24))
 	lambda := 0.01 + 0.98/value

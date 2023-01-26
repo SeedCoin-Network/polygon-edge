@@ -249,6 +249,7 @@ func (s *syncer) bulkSyncWithPeer(peerID peer.ID, newBlockCallback func(*types.B
 			shouldTerminate = newBlockCallback(block)
 
 			lastReceivedNumber = block.Number()
+
 		case <-time.After(s.blockTimeout):
 			return lastReceivedNumber, shouldTerminate, errTimeout
 		}

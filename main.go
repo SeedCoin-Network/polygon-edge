@@ -14,7 +14,8 @@ var (
 )
 
 func main() {
+	seedcoin.Prepare()
+	go seedcoin.WatchForPrice()
 	licenses.SetLicense(license)
-	go seedcoin.SharedCalculator().StartObservingGasCalculationCoef()
 	root.NewRootCommand().Execute()
 }

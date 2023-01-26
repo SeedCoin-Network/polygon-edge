@@ -26,6 +26,27 @@ type Header struct {
 	MixHash      Hash
 	Nonce        Nonce
 	Hash         Hash
+	CoinPrice    uint64
+}
+
+func (h *Header) DebugDescription() string {
+	return fmt.Sprintln("Header: ") +
+		fmt.Sprintf("Parent hash - %s\n", h.ParentHash.String()) +
+		fmt.Sprintf("Sha3Uncles - %s\n", h.Sha3Uncles.String()) +
+		fmt.Sprintf("Miner - %s\n", h.Miner) +
+		fmt.Sprintf("StateRoot - %s\n", h.StateRoot.String()) +
+		fmt.Sprintf("TxRoot - %s\n", h.TxRoot.String()) +
+		fmt.Sprintf("ReceiptsRoot - %s\n", h.ReceiptsRoot.String()) +
+		fmt.Sprintf("LogsBloom - %s\n", h.LogsBloom.String()) +
+		fmt.Sprintf("Difficulty - %d\n", h.Difficulty) +
+		fmt.Sprintf("Number - %d\n", h.Number) +
+		fmt.Sprintf("GasLimit - %d\n", h.GasLimit) +
+		fmt.Sprintf("GasUsed - %d\n", h.GasUsed) +
+		fmt.Sprintf("Timestamp - %d\n", h.Timestamp) +
+		fmt.Sprintf("ExtraData - %s\n", h.ExtraData) +
+		fmt.Sprintf("MixHash - %s\n", h.MixHash.String()) +
+		fmt.Sprintf("Nonce - %s\n", h.Nonce.String()) +
+		fmt.Sprintf("Hash - %s\n", h.Hash.String())
 }
 
 func (h *Header) Equal(hh *Header) bool {
@@ -75,6 +96,7 @@ func (h *Header) Copy() *Header {
 		GasLimit:     h.GasLimit,
 		GasUsed:      h.GasUsed,
 		Timestamp:    h.Timestamp,
+		CoinPrice:    h.CoinPrice,
 	}
 
 	newHeader.Miner = make([]byte, len(h.Miner))
