@@ -1,6 +1,7 @@
 package seedcoin
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"math"
@@ -8,6 +9,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/0xPolygon/polygon-edge/types"
 )
 
 var gasCalculatorOnceSyncPoint sync.Once
@@ -15,7 +18,16 @@ var gasCalculatorOnceSyncPoint sync.Once
 type GasCalculator struct {
 	GasCalculationCoef float64
 	ticker             *time.Ticker
+	priceFromBlock     float64
+	mode               WorkingMode
 }
+
+type WorkingMode uint64
+
+var (
+	InlineMode  WorkingMode = 0
+	SyncingMode WorkingMode = 1
+)
 
 const GasPriceGwei = 200
 
@@ -30,11 +42,45 @@ func SharedCalculator() *GasCalculator {
 	if singletonCalculator == nil {
 		gasCalculatorOnceSyncPoint.Do(
 			func() {
-				singletonCalculator = &GasCalculator{}
+				singletonCalculator = &GasCalculator{
+					mode: InlineMode,
+				}
 			})
 	}
 
 	return singletonCalculator
+}
+
+func (g *GasCalculator) SetMode(mode WorkingMode) {
+	g.mode = mode
+	switch mode {
+	case InlineMode:
+		SharedLogger().Log("Mode changed to %s", "Inline")
+	case SyncingMode:
+		SharedLogger().Log("Mode changed to %s", "Syncing")
+	}
+}
+
+func (g *GasCalculator) GetMode() WorkingMode {
+	return g.mode
+}
+
+func (g *GasCalculator) ApplyPriceFromBlockHeader(header *types.Header) {
+	if header == nil {
+		SharedLogger().Log("[SYNCING] Trying to apply price from block failed, block header is nil %s", "")
+		return
+	}
+
+	if header.CoinPrice == nil {
+		value := 1.0
+		SharedLogger().Log("[SYNCING] coin_price in header missing, using value %f", value)
+		g.priceFromBlock = value
+	} else {
+		bitsPrice := binary.BigEndian.Uint64(header.CoinPrice)
+		priceFromBlock := math.Float64frombits(bitsPrice)
+		SharedLogger().Log("[SYNCING] coin_price in header found, using value %f", priceFromBlock)
+		g.priceFromBlock = priceFromBlock
+	}
 }
 
 func (g *GasCalculator) StartObservingGasCalculationCoef() {
@@ -71,10 +117,22 @@ func (g *GasCalculator) UpdateGasCalculationCoef() error {
 	return nil
 }
 
-func (g *GasCalculator) GasCost(amount *big.Int) uint64 {
+func (g *GasCalculator) GasCost(amount *big.Int, isExecutionCalculation bool) uint64 {
 	const prec = 512
 
-	x := g.GasCalculationCoef
+	var x float64
+	if isExecutionCalculation {
+		switch g.mode {
+		case SyncingMode:
+			x = g.priceFromBlock
+		case InlineMode:
+			x = g.GasCalculationCoef
+		default:
+			x = g.GasCalculationCoef
+		}
+	} else {
+		x = g.GasCalculationCoef
+	}
 	// λ=0.01+0.98/(1+(x+1)^{24})
 	value := (1.0 + math.Pow((x+1.0), 24))
 	lambda := 0.01 + 0.98/value

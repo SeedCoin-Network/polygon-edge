@@ -7,6 +7,7 @@ import (
 
 	"github.com/0xPolygon/polygon-edge/helper/progress"
 	"github.com/0xPolygon/polygon-edge/network/event"
+	"github.com/0xPolygon/polygon-edge/seedcoin"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/hashicorp/go-hclog"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -163,6 +164,7 @@ func (s *syncer) Sync(callback func(*types.Block) bool) error {
 	localLatest := s.blockchain.Header().Number
 	skipList := make(map[peer.ID]bool)
 
+	seedcoin.SharedCalculator().SetMode(seedcoin.SyncingMode)
 	for {
 		// Wait for a new event to arrive
 		<-s.newStatusCh
@@ -203,6 +205,7 @@ func (s *syncer) Sync(callback func(*types.Block) bool) error {
 			break
 		}
 	}
+	seedcoin.SharedCalculator().SetMode(seedcoin.InlineMode)
 
 	return nil
 }
@@ -238,17 +241,22 @@ func (s *syncer) bulkSyncWithPeer(peerID peer.ID, newBlockCallback func(*types.B
 				continue
 			}
 
+			seedcoin.SharedCalculator().ApplyPriceFromBlockHeader(block.Header)
+
 			if err := s.blockchain.VerifyFinalizedBlock(block); err != nil {
+				seedcoin.SharedCalculator().SetMode(seedcoin.InlineMode)
 				return lastReceivedNumber, false, fmt.Errorf("unable to verify block, %w", err)
 			}
 
 			if err := s.blockchain.WriteBlock(block, syncerName); err != nil {
+				seedcoin.SharedCalculator().SetMode(seedcoin.InlineMode)
 				return lastReceivedNumber, false, fmt.Errorf("failed to write block while bulk syncing: %w", err)
 			}
 
 			shouldTerminate = newBlockCallback(block)
 
 			lastReceivedNumber = block.Number()
+
 		case <-time.After(s.blockTimeout):
 			return lastReceivedNumber, shouldTerminate, errTimeout
 		}

@@ -83,6 +83,10 @@ func (h *Header) MarshalRLPWith(arena *fastrlp.Arena) *fastrlp.Value {
 	vv.Set(arena.NewBytes(h.MixHash.Bytes()))
 	vv.Set(arena.NewCopyBytes(h.Nonce[:]))
 
+	if h.CoinPrice != nil && len(h.CoinPrice) > 0 {
+		vv.Set(arena.NewBytes(h.CoinPrice))
+	}
+
 	return vv
 }
 

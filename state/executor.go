@@ -859,7 +859,7 @@ func (t *Transition) GetRefund() uint64 {
 func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool) (uint64, error) {
 	cost := uint64(0)
 	calculator := seedcoin.SharedCalculator()
-	gasCost := calculator.GasCost(msg.Value)
+	gasCost := calculator.GasCost(msg.Value, true)
 	if msg.Value.Uint64() == 0 && gasCost == 0 && msg.IsContractCreation() {
 		gasCost = TxGasContractCreation
 		return gasCost, nil

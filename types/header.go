@@ -26,6 +26,7 @@ type Header struct {
 	MixHash      Hash
 	Nonce        Nonce
 	Hash         Hash
+	CoinPrice    []byte
 }
 
 func (h *Header) Equal(hh *Header) bool {
@@ -75,6 +76,7 @@ func (h *Header) Copy() *Header {
 		GasLimit:     h.GasLimit,
 		GasUsed:      h.GasUsed,
 		Timestamp:    h.Timestamp,
+		CoinPrice:    h.CoinPrice,
 	}
 
 	newHeader.Miner = make([]byte, len(h.Miner))

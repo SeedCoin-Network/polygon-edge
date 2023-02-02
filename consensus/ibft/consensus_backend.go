@@ -2,6 +2,7 @@ package ibft
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/consensus"
 	"github.com/0xPolygon/polygon-edge/consensus/ibft/signer"
 	"github.com/0xPolygon/polygon-edge/helper/hex"
+	"github.com/0xPolygon/polygon-edge/seedcoin"
 	"github.com/0xPolygon/polygon-edge/state"
 	"github.com/0xPolygon/polygon-edge/types"
 )
@@ -158,6 +160,19 @@ func (i *backendIBFT) Quorum(blockNumber uint64) uint64 {
 
 // buildBlock builds the block, based on the passed in snapshot and parent header
 func (i *backendIBFT) buildBlock(parent *types.Header) (*types.Block, error) {
+	coinPriceRaw := &seedcoin.SharedCalculator().GasCalculationCoef
+
+	var coinPriceValue float64
+	if coinPriceRaw == nil || *coinPriceRaw == 0.0 {
+		coinPriceValue = 1.0
+	} else {
+		coinPriceValue = *coinPriceRaw
+	}
+	println("coinPriceValue:", coinPriceValue)
+	var coinPriceBuf [8]byte
+	binary.BigEndian.PutUint64(coinPriceBuf[:], math.Float64bits(coinPriceValue))
+	var coinPrice []byte = coinPriceBuf[:]
+
 	header := &types.Header{
 		ParentHash: parent.Hash,
 		Number:     parent.Number + 1,
@@ -169,6 +184,7 @@ func (i *backendIBFT) buildBlock(parent *types.Header) (*types.Block, error) {
 		StateRoot:  types.EmptyRootHash, // this avoids needing state for now
 		Sha3Uncles: types.EmptyUncleHash,
 		GasLimit:   parent.GasLimit, // Inherit from parent for now, will need to adjust dynamically later.
+		CoinPrice:  coinPrice,
 	}
 
 	// calculate gas limit based on parent header
