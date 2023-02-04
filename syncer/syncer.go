@@ -241,16 +241,18 @@ func (s *syncer) bulkSyncWithPeer(peerID peer.ID, newBlockCallback func(*types.B
 			if block.Number() == 0 {
 				continue
 			}
+			println(block.Header.DebugDescription())
+			for _, x := range block.Transactions {
+				println(x.DebugDescription())
+			}
 
 			seedcoin.SharedCalculator().ApplyPriceFromBlockHeader(block.Header)
 
 			if err := s.blockchain.VerifyFinalizedBlock(block); err != nil {
-				seedcoin.SharedCalculator().SetMode(seedcoin.InlineMode)
 				return lastReceivedNumber, false, fmt.Errorf("unable to verify block, %w", err)
 			}
 
 			if err := s.blockchain.WriteBlock(block, syncerName); err != nil {
-				seedcoin.SharedCalculator().SetMode(seedcoin.InlineMode)
 				return lastReceivedNumber, false, fmt.Errorf("failed to write block while bulk syncing: %w", err)
 			}
 
