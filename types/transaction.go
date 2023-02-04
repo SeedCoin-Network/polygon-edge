@@ -27,11 +27,12 @@ type Transaction struct {
 
 func (t *Transaction) DebugDescription() string {
 	separator := "\n===============\n"
-	fromStr := fmt.Sprintf("FROM: %v", t.From.String())
-	toStr := fmt.Sprintf("TO: %v", t.To.String())
-	amntStr := fmt.Sprintf("AMOUNT: %d", t.Value.Uint64())
+	fromStr := fmt.Sprintf("FROM: %s\n", t.From.String())
+	toStr := fmt.Sprintf("TO: %s\n", t.To.String())
+	amntStr := fmt.Sprintf("AMOUNT: %d\n", t.Value.Uint64())
 	gasStr := fmt.Sprintf("GAS_PRICE: %d, GAS_UNITS: %d", t.GasPrice.Uint64(), t.Gas)
 	result := separator + fromStr + toStr + amntStr + gasStr + separator
+
 	return result
 }
 
