@@ -102,7 +102,7 @@ type block struct {
 	Hash            types.Hash          `json:"hash"`
 	Transactions    []transactionOrHash `json:"transactions"`
 	Uncles          []types.Hash        `json:"uncles"`
-	CoinPrice       []byte              `json:"coin_price,omitempty"`
+	CoinPrice       argUint64           `json:"coin_price,omitempty"`
 }
 
 func (b *block) Copy() *block {
@@ -142,7 +142,7 @@ func toBlock(b *types.Block, fullTx bool) *block {
 		Hash:            h.Hash,
 		Transactions:    []transactionOrHash{},
 		Uncles:          []types.Hash{},
-		CoinPrice:       h.CoinPrice,
+		CoinPrice:       argUint64(h.CoinPrice),
 	}
 
 	for idx, txn := range b.Transactions {

@@ -26,7 +26,7 @@ type Header struct {
 	MixHash      Hash
 	Nonce        Nonce
 	Hash         Hash
-	CoinPrice    []byte
+	CoinPrice    uint64
 }
 
 func (h *Header) DebugDescription() string {

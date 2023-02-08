@@ -2,7 +2,6 @@ package ibft
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"math"
 	"time"
@@ -160,18 +159,15 @@ func (i *backendIBFT) Quorum(blockNumber uint64) uint64 {
 
 // buildBlock builds the block, based on the passed in snapshot and parent header
 func (i *backendIBFT) buildBlock(parent *types.Header) (*types.Block, error) {
-	coinPriceRaw := &seedcoin.SharedCalculator().GasCalculationCoef
-
 	var coinPriceValue float64
-	if coinPriceRaw == nil || *coinPriceRaw == 0.0 {
-		coinPriceValue = 1.0
+	coinPriceRaw, err := seedcoin.LastPrice()
+	if err != nil {
+		coinPriceValue = 1
 	} else {
-		coinPriceValue = *coinPriceRaw
+		coinPriceValue = coinPriceRaw
 	}
-	println("coinPriceValue:", coinPriceValue)
-	var coinPriceBuf [8]byte
-	binary.BigEndian.PutUint64(coinPriceBuf[:], math.Float64bits(coinPriceValue))
-	var coinPrice []byte = coinPriceBuf[:]
+
+	coinPrice := seedcoin.PreparePriceForWritingToBlock(coinPriceValue)
 
 	header := &types.Header{
 		ParentHash: parent.Hash,
