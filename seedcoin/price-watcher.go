@@ -136,17 +136,17 @@ func LastPrice() (float64, error) {
 }
 
 func PreparePriceForWritingToBlock(price float64) uint64 {
-	bigPrice := new(big.Float).SetPrec(prec).SetFloat64(price)
-	bigNormalizer := new(big.Float).SetPrec(prec).SetUint64(priceBlockWritingMultiplier)
-	bigResult := new(big.Float).SetPrec(prec).Mul(bigPrice, bigNormalizer)
+	bigPrice := new(big.Float).SetPrec(Prec).SetFloat64(price)
+	bigNormalizer := new(big.Float).SetPrec(Prec).SetUint64(priceBlockWritingMultiplier)
+	bigResult := new(big.Float).SetPrec(Prec).Mul(bigPrice, bigNormalizer)
 	result, _ := bigResult.Uint64()
 	return result
 }
 
 func ExtractPriceFromBlockValue(value uint64) float64 {
-	bigValue := new(big.Float).SetPrec(prec).SetUint64(value)
-	bigNormalizer := new(big.Float).SetPrec(prec).SetUint64(priceBlockWritingMultiplier)
-	bigResult := new(big.Float).SetPrec(prec).Quo(bigValue, bigNormalizer)
+	bigValue := new(big.Float).SetPrec(Prec).SetUint64(value)
+	bigNormalizer := new(big.Float).SetPrec(Prec).SetUint64(priceBlockWritingMultiplier)
+	bigResult := new(big.Float).SetPrec(Prec).Quo(bigValue, bigNormalizer)
 	result, _ := bigResult.Float64()
 	return result
 }
