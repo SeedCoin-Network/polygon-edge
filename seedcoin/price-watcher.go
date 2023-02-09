@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"math/big"
 	"net/http"
 	"os"
@@ -124,10 +125,12 @@ func UpdatePrice() {
 }
 
 func LastPrice() (float64, error) {
-	lastPrice, err := readPriceFromFile()
+	lastPriceFromFile, err := readPriceFromFile()
 	if err != nil {
 		return 0, err
 	}
+
+	lastPrice := math.Round(lastPriceFromFile*100) / 100
 
 	return lastPrice, nil
 }

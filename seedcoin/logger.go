@@ -11,6 +11,8 @@ type Logger struct{}
 
 var singletonLogger *Logger
 
+const logTemplate string = "[SEEDCOIN]:"
+
 func SharedLogger() *Logger {
 	if singletonLogger == nil {
 		loggerOnceSyncPoint.Do(
@@ -23,8 +25,12 @@ func SharedLogger() *Logger {
 }
 
 func (l *Logger) Log(format string, a ...any) {
-	logTemplate := "[SEEDCOIN]: "
-	logFormat := logTemplate + format
+	logFormat := logTemplate + " " + format
 	logStr := fmt.Sprintf(logFormat, a)
+	println(logStr)
+}
+
+func (l *Logger) LogMessage(message string) {
+	logStr := logTemplate + " " + message
 	println(logStr)
 }

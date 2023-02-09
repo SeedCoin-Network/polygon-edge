@@ -30,7 +30,7 @@ var (
 
 // TxQueryHandler is a interface to call view method in the contract
 type TxQueryHandler interface {
-	Apply(*types.Transaction) (*runtime.ExecutionResult, error)
+	Apply(*types.Transaction, *types.Header) (*runtime.ExecutionResult, error)
 	GetNonce(types.Address) uint64
 }
 
@@ -103,12 +103,15 @@ func QueryValidators(t TxQueryHandler, from types.Address) ([]types.Address, err
 		return nil, ErrMethodNotFoundInABI
 	}
 
-	res, err := t.Apply(createCallViewTx(
-		from,
-		AddrStakingContract,
-		method.ID(),
-		t.GetNonce(from),
-	))
+	res, err := t.Apply(
+		createCallViewTx(
+			from,
+			AddrStakingContract,
+			method.ID(),
+			t.GetNonce(from),
+		),
+		nil,
+	)
 
 	if err != nil {
 		return nil, err
@@ -146,12 +149,15 @@ func QueryBLSPublicKeys(t TxQueryHandler, from types.Address) ([][]byte, error) 
 		return nil, ErrMethodNotFoundInABI
 	}
 
-	res, err := t.Apply(createCallViewTx(
-		from,
-		AddrStakingContract,
-		method.ID(),
-		t.GetNonce(from),
-	))
+	res, err := t.Apply(
+		createCallViewTx(
+			from,
+			AddrStakingContract,
+			method.ID(),
+			t.GetNonce(from),
+		),
+		nil,
+	)
 
 	if err != nil {
 		return nil, err
