@@ -508,7 +508,7 @@ func (j *jsonRPCHub) ApplyTxn(
 		return
 	}
 
-	result, err = transition.Apply(txn)
+	result, err = transition.Apply(txn, header)
 
 	return
 }
@@ -544,7 +544,7 @@ func (j *jsonRPCHub) TraceBlock(
 	for idx, tx := range block.Transactions {
 		tracer.Clear()
 
-		if _, err := transition.Apply(tx); err != nil {
+		if _, err := transition.Apply(tx, block.Header); err != nil {
 			return nil, err
 		}
 
@@ -591,7 +591,7 @@ func (j *jsonRPCHub) TraceTxn(
 		}
 
 		// Execute transactions without tracer until reaching the target transaction
-		if _, err := transition.Apply(tx); err != nil {
+		if _, err := transition.Apply(tx, block.Header); err != nil {
 			return nil, err
 		}
 	}
@@ -602,7 +602,7 @@ func (j *jsonRPCHub) TraceTxn(
 
 	transition.SetTracer(tracer)
 
-	if _, err := transition.Apply(targetTx); err != nil {
+	if _, err := transition.Apply(targetTx, block.Header); err != nil {
 		return nil, err
 	}
 
@@ -626,7 +626,7 @@ func (j *jsonRPCHub) TraceCall(
 
 	transition.SetTracer(tracer)
 
-	if _, err := transition.Apply(tx); err != nil {
+	if _, err := transition.Apply(tx, parentHeader); err != nil {
 		return nil, err
 	}
 

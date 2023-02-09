@@ -46,7 +46,8 @@ func (h *Header) DebugDescription() string {
 		fmt.Sprintf("ExtraData - %s\n", h.ExtraData) +
 		fmt.Sprintf("MixHash - %s\n", h.MixHash.String()) +
 		fmt.Sprintf("Nonce - %s\n", h.Nonce.String()) +
-		fmt.Sprintf("Hash - %s\n", h.Hash.String())
+		fmt.Sprintf("Hash - %s\n", h.Hash.String()) +
+		fmt.Sprintf("CoinPrice - %d\n", h.CoinPrice)
 }
 
 func (h *Header) Equal(hh *Header) bool {

@@ -14,7 +14,7 @@ type GasCalculator struct{}
 
 const (
 	GasPriceGwei = 200
-	prec         = 512
+	Prec         = 512
 )
 
 var singletonCalculator *GasCalculator
@@ -30,34 +30,36 @@ func SharedCalculator() *GasCalculator {
 	return singletonCalculator
 }
 
-func (g *GasCalculator) GasCost(amount *big.Int, isExecutionCalculation bool, header *types.Header) uint64 {
+func (g *GasCalculator) GasCost(amount *big.Int, header *types.Header) uint64 {
 	lastPrice, err := LastPrice()
 	var x float64
 	if header != nil {
 		priceFromBlock := ExtractPriceFromBlockValue(header.CoinPrice)
 		x = priceFromBlock
+		//SharedLogger().Log("Block is found, using price from block%s", "")
 	} else {
 		if err != nil {
-			SharedLogger().Log(
-				"Couldn't load last price from file%s",
-				"FAIL",
-			)
+			//SharedLogger().Log(
+			//	"Couldn't load last price from file%s",
+			//	"FAIL",
+			//)
 			x = 1
 		} else {
 			x = lastPrice
+			//SharedLogger().Log("Unfortunately Block is nil, using last price %f", lastPrice)
 		}
 	}
 	// λ=0.01+0.98/(1+(x+1)^{24})
 	value := (1.0 + math.Pow((x+1.0), 24))
 	lambda := 0.01 + 0.98/value
 
-	bigLambda := new(big.Float).SetPrec(prec).SetFloat64(lambda)
-	bigFloatAmount := new(big.Float).SetPrec(prec).SetInt(amount)
-	bigNormalizer := new(big.Float).SetPrec(prec).SetFloat64(1e-9)
-	bigNormalizedAmount := new(big.Float).SetPrec(prec).Mul(bigFloatAmount, bigNormalizer)
-	bigResult := new(big.Float).SetPrec(prec).Mul(bigNormalizedAmount, bigLambda)
-	bigGasPrice := new(big.Float).SetPrec(prec).SetUint64(GasPriceGwei)
-	bigTotalAmount := new(big.Float).SetPrec(prec).Quo(bigResult, bigGasPrice)
+	bigLambda := new(big.Float).SetPrec(Prec).SetFloat64(lambda)
+	bigFloatAmount := new(big.Float).SetPrec(Prec).SetInt(amount)
+	bigNormalizer := new(big.Float).SetPrec(Prec).SetFloat64(1e-9)
+	bigNormalizedAmount := new(big.Float).SetPrec(Prec).Mul(bigFloatAmount, bigNormalizer)
+	bigResult := new(big.Float).SetPrec(Prec).Mul(bigNormalizedAmount, bigLambda)
+	bigGasPrice := new(big.Float).SetPrec(Prec).SetUint64(GasPriceGwei)
+	bigTotalAmount := new(big.Float).SetPrec(Prec).Quo(bigResult, bigGasPrice)
 
 	plainGasPrice, _ := bigTotalAmount.Uint64()
 
