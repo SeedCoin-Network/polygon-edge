@@ -50,7 +50,7 @@ func (g *GasCalculator) GasCost(amount *big.Int, header *types.Header) uint64 {
 		}
 	}
 	// λ=0.01+0.98/(1+(x+1)^{24})
-	value := (1.0 + math.Pow((x+1.0), 24))
+	value := 1.0 + math.Pow(x+1.0, 24)
 	lambda := 0.01 + 0.98/value
 
 	bigLambda := new(big.Float).SetPrec(Prec).SetFloat64(lambda)
