@@ -35,7 +35,11 @@ func (g *GasCalculator) GasCost(amount *big.Int, header *types.Header) uint64 {
 	var x float64
 	if header != nil {
 		priceFromBlock := ExtractPriceFromBlockValue(header.CoinPrice)
-		x = priceFromBlock
+		if priceFromBlock == 0 {
+			x = 1
+		} else {
+			x = priceFromBlock
+		}
 		//SharedLogger().Log("Block is found, using price from block%s", "")
 	} else {
 		if err != nil {
