@@ -452,7 +452,6 @@ func (e *Eth) EstimateGas(arg *txnArgs, rawNum *BlockNumber) (interface{}, error
 	txAmount := new(big.Int).Set(transaction.Value)
 	//TODO: Возможно тут нужно зафиксировать 200gwei
 	txGasPriceInt := new(big.Int).Set(transaction.GasPrice)
-	seedcoin.SharedLogger().LogMessage("Вызов из естимейта транзакции")
 	gasCost := gasCalculator.GasCost(txAmount, nil)
 	isContractExecution := transaction.Input != nil
 	if gasCost == 0 && isContractExecution {

@@ -860,7 +860,6 @@ func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool, he
 	cost := uint64(0)
 	calculator := seedcoin.SharedCalculator()
 
-	//seedcoin.SharedLogger().LogMessage("Вызов из исполнения транзакции")
 	gasCost := calculator.GasCost(msg.Value, header)
 	if msg.Value.Uint64() == 0 && gasCost == 0 && msg.IsContractCreation() {
 		gasCost = TxGasContractCreation
