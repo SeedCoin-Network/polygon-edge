@@ -17,6 +17,7 @@ WORKDIR /polygon-edge
 
 COPY ./genesis-bootnode-replacer/main.go /polygon-edge/genesis-bootnode-replacer/main.go
 COPY --from=builder /polygon-edge/polygon-edge ./
+COPY --from=builder /polygon-edge/.env ./ 
 COPY ./docker/local/polygon-edge.sh ./
 COPY ./chain/chains/seedcoin.json /genesis/seedcoin-template.json
 RUN chmod 0777 /genesis/seedcoin-template.json

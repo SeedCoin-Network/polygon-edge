@@ -109,7 +109,7 @@ func (e *Executor) ProcessBlock(
 			continue
 		}
 
-		if err := txn.Write(t); err != nil {
+		if err := txn.Write(t, block.Header); err != nil {
 			return nil, err
 		}
 	}
@@ -251,7 +251,7 @@ func (t *Transition) WriteFailedReceipt(txn *types.Transaction) error {
 }
 
 // Write writes another transaction to the executor
-func (t *Transition) Write(txn *types.Transaction) error {
+func (t *Transition) Write(txn *types.Transaction, header *types.Header) error {
 	signer := crypto.NewSigner(t.config, uint64(t.ctx.ChainID))
 
 	var err error
@@ -266,7 +266,7 @@ func (t *Transition) Write(txn *types.Transaction) error {
 	// Make a local copy and apply the transaction
 	msg := txn.Copy()
 
-	result, e := t.Apply(msg)
+	result, e := t.Apply(msg, header)
 	if e != nil {
 		t.logger.Error("failed to apply tx", "err", e)
 
@@ -332,10 +332,10 @@ func (t *Transition) Txn() *Txn {
 }
 
 // Apply applies a new transaction
-func (t *Transition) Apply(msg *types.Transaction) (*runtime.ExecutionResult, error) {
+func (t *Transition) Apply(msg *types.Transaction, header *types.Header) (*runtime.ExecutionResult, error) {
 	s := t.state.Snapshot()
 
-	result, err := t.apply(msg)
+	result, err := t.apply(msg, header)
 	if err != nil {
 		t.state.RevertToSnapshot(s)
 	}
@@ -417,7 +417,7 @@ func NewGasLimitReachedTransitionApplicationError(err error) *GasLimitReachedTra
 	}
 }
 
-func (t *Transition) apply(msg *types.Transaction) (*runtime.ExecutionResult, error) {
+func (t *Transition) apply(msg *types.Transaction, header *types.Header) (*runtime.ExecutionResult, error) {
 	// First check this message satisfies all consensus rules before
 	// applying the message. The rules include these clauses
 	//
@@ -449,12 +449,12 @@ func (t *Transition) apply(msg *types.Transaction) (*runtime.ExecutionResult, er
 	}
 
 	// 4. there is no overflow when calculating intrinsic gas
-	intrinsicGasCost, err := TransactionGasCost(msg, t.config.Homestead, t.config.Istanbul)
+	intrinsicGasCost, err := TransactionGasCost(msg, t.config.Homestead, t.config.Istanbul, header)
 	if err != nil {
 		return nil, NewTransitionApplicationError(err, false)
 	}
 
-	// Retrivieng foundation address
+	// Retrieving foundation address
 	foundation, retrErr := t.getFoundation(msg)
 	if retrErr != nil {
 		return nil, retrErr
@@ -856,10 +856,12 @@ func (t *Transition) GetRefund() uint64 {
 	return t.state.GetRefund()
 }
 
-func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool) (uint64, error) {
+func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool, header *types.Header) (uint64, error) {
 	cost := uint64(0)
 	calculator := seedcoin.SharedCalculator()
-	gasCost := calculator.GasCost(msg.Value, true)
+
+	//seedcoin.SharedLogger().LogMessage("Вызов из исполнения транзакции")
+	gasCost := calculator.GasCost(msg.Value, header)
 	if msg.Value.Uint64() == 0 && gasCost == 0 && msg.IsContractCreation() {
 		gasCost = TxGasContractCreation
 		return gasCost, nil

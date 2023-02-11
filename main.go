@@ -14,10 +14,8 @@ var (
 )
 
 func main() {
+	seedcoin.Prepare()
+	go seedcoin.WatchForPrice()
 	licenses.SetLicense(license)
-	if err := seedcoin.SharedCalculator().UpdateGasCalculationCoef(); err != nil {
-		panic(err)
-	}
-	go seedcoin.SharedCalculator().StartObservingGasCalculationCoef()
 	root.NewRootCommand().Execute()
 }

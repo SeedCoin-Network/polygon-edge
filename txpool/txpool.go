@@ -612,10 +612,10 @@ func (p *TxPool) validateTx(tx *types.Transaction) error {
 	}
 
 	if tx.To != nil {
-		// Check if gas price setted propery
+		// Check if gas price was set properly
 		gasPriceError := p.checkGasPriceSettedProperly(tx)
 		if gasPriceError != nil {
-			seedcoin.SharedLogger().Log("txpool.go:602 - wrong gas price passed, please use correct gas price value")
+			seedcoin.SharedLogger().Log("txpool.go:618 - wrong gas price passed, please use correct gas price value")
 			return ErrWrongGasPrice
 		}
 	}
@@ -674,7 +674,7 @@ func (p *TxPool) validateTx(tx *types.Transaction) error {
 	}
 
 	// Make sure the transaction has more gas than the basic transaction fee
-	intrinsicGas, err := state.TransactionGasCost(tx, p.forks.Homestead, p.forks.Istanbul)
+	intrinsicGas, err := state.TransactionGasCost(tx, p.forks.Homestead, p.forks.Istanbul, p.store.Header())
 	if err != nil {
 		return err
 	}

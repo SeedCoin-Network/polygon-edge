@@ -7,7 +7,6 @@ import (
 
 	"github.com/0xPolygon/polygon-edge/helper/progress"
 	"github.com/0xPolygon/polygon-edge/network/event"
-	"github.com/0xPolygon/polygon-edge/seedcoin"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/hashicorp/go-hclog"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -168,8 +167,6 @@ func (s *syncer) Sync(callback func(*types.Block) bool) error {
 		// Wait for a new event to arrive
 		<-s.newStatusCh
 
-		seedcoin.SharedCalculator().SetMode(seedcoin.SyncingMode)
-
 		// fetch local latest block
 		if header := s.blockchain.Header(); header != nil {
 			localLatest = header.Number
@@ -206,7 +203,6 @@ func (s *syncer) Sync(callback func(*types.Block) bool) error {
 			break
 		}
 	}
-	seedcoin.SharedCalculator().SetMode(seedcoin.InlineMode)
 
 	return nil
 }
@@ -241,12 +237,6 @@ func (s *syncer) bulkSyncWithPeer(peerID peer.ID, newBlockCallback func(*types.B
 			if block.Number() == 0 {
 				continue
 			}
-			println(block.Header.DebugDescription())
-			for _, x := range block.Transactions {
-				println(x.DebugDescription())
-			}
-
-			seedcoin.SharedCalculator().ApplyPriceFromBlockHeader(block.Header)
 
 			if err := s.blockchain.VerifyFinalizedBlock(block); err != nil {
 				return lastReceivedNumber, false, fmt.Errorf("unable to verify block, %w", err)

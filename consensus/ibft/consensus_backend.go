@@ -2,7 +2,6 @@ package ibft
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"math"
 	"time"
@@ -160,18 +159,15 @@ func (i *backendIBFT) Quorum(blockNumber uint64) uint64 {
 
 // buildBlock builds the block, based on the passed in snapshot and parent header
 func (i *backendIBFT) buildBlock(parent *types.Header) (*types.Block, error) {
-	coinPriceRaw := &seedcoin.SharedCalculator().GasCalculationCoef
-
 	var coinPriceValue float64
-	if coinPriceRaw == nil || *coinPriceRaw == 0.0 {
-		coinPriceValue = 1.0
+	coinPriceRaw, err := seedcoin.LastPrice()
+	if err != nil {
+		coinPriceValue = 1
 	} else {
-		coinPriceValue = *coinPriceRaw
+		coinPriceValue = coinPriceRaw
 	}
-	println("coinPriceValue:", coinPriceValue)
-	var coinPriceBuf [8]byte
-	binary.BigEndian.PutUint64(coinPriceBuf[:], math.Float64bits(coinPriceValue))
-	var coinPrice []byte = coinPriceBuf[:]
+
+	coinPrice := seedcoin.PreparePriceForWritingToBlock(coinPriceValue)
 
 	header := &types.Header{
 		ParentHash: parent.Hash,
@@ -224,6 +220,7 @@ func (i *backendIBFT) buildBlock(parent *types.Header) (*types.Block, error) {
 		gasLimit,
 		header.Number,
 		transition,
+		header,
 	)
 
 	if err := i.PreCommitState(header, transition); err != nil {
@@ -297,7 +294,7 @@ type txExeResult struct {
 }
 
 type transitionInterface interface {
-	Write(txn *types.Transaction) error
+	Write(txn *types.Transaction, header *types.Header) error
 	WriteFailedReceipt(txn *types.Transaction) error
 }
 
@@ -306,6 +303,7 @@ func (i *backendIBFT) writeTransactions(
 	gasLimit,
 	blockNumber uint64,
 	transition transitionInterface,
+	header *types.Header,
 ) (executed []*types.Transaction) {
 	executed = make([]*types.Transaction, 0)
 
@@ -342,6 +340,7 @@ write:
 				i.txpool.Peek(),
 				transition,
 				gasLimit,
+				header,
 			)
 
 			if !ok {
@@ -372,6 +371,7 @@ func (i *backendIBFT) writeTransaction(
 	tx *types.Transaction,
 	transition transitionInterface,
 	gasLimit uint64,
+	header *types.Header,
 ) (*txExeResult, bool) {
 	if tx == nil {
 		return nil, false
@@ -393,7 +393,7 @@ func (i *backendIBFT) writeTransaction(
 		return &txExeResult{tx, fail}, true
 	}
 
-	if err := transition.Write(tx); err != nil {
+	if err := transition.Write(tx, header); err != nil {
 		if _, ok := err.(*state.GasLimitReachedTransitionApplicationError); ok { //nolint:errorlint
 			// stop processing
 			return nil, false

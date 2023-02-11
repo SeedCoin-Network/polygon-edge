@@ -1,149 +1,69 @@
 package seedcoin
 
 import (
-	"encoding/binary"
-	"encoding/json"
-	"io"
 	"math"
 	"math/big"
-	"net/http"
 	"sync"
-	"time"
 
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
 var gasCalculatorOnceSyncPoint sync.Once
 
-type GasCalculator struct {
-	GasCalculationCoef float64
-	ticker             *time.Ticker
-	priceFromBlock     float64
-	mode               WorkingMode
-}
-
-type WorkingMode uint64
-
-var (
-	InlineMode  WorkingMode = 0
-	SyncingMode WorkingMode = 1
-)
-
-const GasPriceGwei = 200
-
-var singletonCalculator *GasCalculator
+type GasCalculator struct{}
 
 const (
-	oracleEndpoint    = "https://api.seedcoin.network/oracle/price"
-	observingInterval = time.Second * 120
+	GasPriceGwei = 200
+	Prec         = 512
 )
+
+var singletonCalculator *GasCalculator
 
 func SharedCalculator() *GasCalculator {
 	if singletonCalculator == nil {
 		gasCalculatorOnceSyncPoint.Do(
 			func() {
-				singletonCalculator = &GasCalculator{
-					mode: InlineMode,
-				}
+				singletonCalculator = &GasCalculator{}
 			})
 	}
 
 	return singletonCalculator
 }
 
-func (g *GasCalculator) SetMode(mode WorkingMode) {
-	g.mode = mode
-	switch mode {
-	case InlineMode:
-		SharedLogger().Log("Mode changed to %s", "Inline")
-	case SyncingMode:
-		SharedLogger().Log("Mode changed to %s", "Syncing")
-	}
-}
-
-func (g *GasCalculator) GetMode() WorkingMode {
-	return g.mode
-}
-
-func (g *GasCalculator) ApplyPriceFromBlockHeader(header *types.Header) {
-	if header == nil {
-		SharedLogger().Log("[SYNCING] Trying to apply price from block failed, block header is nil %s", "")
-		return
-	}
-
-	if header.CoinPrice == nil {
-		value := 1.0
-		SharedLogger().Log("[SYNCING] coin_price in header missing, using value %f", value)
-		g.priceFromBlock = value
-	} else {
-		bitsPrice := binary.BigEndian.Uint64(header.CoinPrice)
-		priceFromBlock := math.Float64frombits(bitsPrice)
-		SharedLogger().Log("[SYNCING] coin_price in header found, using value %f", priceFromBlock)
-		g.priceFromBlock = priceFromBlock
-	}
-}
-
-func (g *GasCalculator) StartObservingGasCalculationCoef() {
-	g.ticker = time.NewTicker(observingInterval)
-	for range g.ticker.C {
-		updatingError := g.UpdateGasCalculationCoef()
-		if updatingError != nil {
-			SharedLogger().Log("%s", updatingError)
-			println(updatingError)
-		}
-	}
-}
-
-func (g *GasCalculator) UpdateGasCalculationCoef() error {
-	resp, reqErr := http.Get(oracleEndpoint)
-	if reqErr != nil {
-		return reqErr
-	}
-
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		return readErr
-	}
-
-	var data FeePayload
-	parseErr := json.Unmarshal(body, &data)
-	if parseErr != nil {
-		return parseErr
-	}
-
-	g.GasCalculationCoef = data.Price
-	SharedLogger().Log("Received price: %f", data.Price)
-
-	return nil
-}
-
-func (g *GasCalculator) GasCost(amount *big.Int, isExecutionCalculation bool) uint64 {
-	const prec = 512
-
+func (g *GasCalculator) GasCost(amount *big.Int, header *types.Header) uint64 {
+	lastPrice, err := LastPrice()
 	var x float64
-	if isExecutionCalculation {
-		switch g.mode {
-		case SyncingMode:
-			x = g.priceFromBlock
-		case InlineMode:
-			x = g.GasCalculationCoef
-		default:
-			x = g.GasCalculationCoef
+	if header != nil {
+		priceFromBlock := ExtractPriceFromBlockValue(header.CoinPrice)
+		if priceFromBlock == 0 {
+			x = 1
+		} else {
+			x = priceFromBlock
 		}
+		//SharedLogger().Log("Block is found, using price from block%s", "")
 	} else {
-		x = g.GasCalculationCoef
+		if err != nil {
+			//SharedLogger().Log(
+			//	"Couldn't load last price from file%s",
+			//	"FAIL",
+			//)
+			x = 1
+		} else {
+			x = lastPrice
+			//SharedLogger().Log("Unfortunately Block is nil, using last price %f", lastPrice)
+		}
 	}
 	// λ=0.01+0.98/(1+(x+1)^{24})
-	value := (1.0 + math.Pow((x+1.0), 24))
+	value := 1.0 + math.Pow(x+1.0, 24)
 	lambda := 0.01 + 0.98/value
 
-	bigLambda := new(big.Float).SetPrec(prec).SetFloat64(lambda)
-	bigFloatAmount := new(big.Float).SetPrec(prec).SetInt(amount)
-	bigNormalizer := new(big.Float).SetPrec(prec).SetFloat64(1e-9)
-	bigNormalizedAmount := new(big.Float).SetPrec(prec).Mul(bigFloatAmount, bigNormalizer)
-	bigResult := new(big.Float).SetPrec(prec).Mul(bigNormalizedAmount, bigLambda)
-	bigGasPrice := new(big.Float).SetPrec(prec).SetUint64(GasPriceGwei)
-	bigTotalAmount := new(big.Float).SetPrec(prec).Quo(bigResult, bigGasPrice)
+	bigLambda := new(big.Float).SetPrec(Prec).SetFloat64(lambda)
+	bigFloatAmount := new(big.Float).SetPrec(Prec).SetInt(amount)
+	bigNormalizer := new(big.Float).SetPrec(Prec).SetFloat64(1e-9)
+	bigNormalizedAmount := new(big.Float).SetPrec(Prec).Mul(bigFloatAmount, bigNormalizer)
+	bigResult := new(big.Float).SetPrec(Prec).Mul(bigNormalizedAmount, bigLambda)
+	bigGasPrice := new(big.Float).SetPrec(Prec).SetUint64(GasPriceGwei)
+	bigTotalAmount := new(big.Float).SetPrec(Prec).Quo(bigResult, bigGasPrice)
 
 	plainGasPrice, _ := bigTotalAmount.Uint64()
 

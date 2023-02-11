@@ -166,7 +166,7 @@ func (h *Header) UnmarshalRLPFrom(p *fastrlp.Parser, v *fastrlp.Value) error {
 	h.SetNonce(nonce)
 
 	if len(elems) == 16 {
-		if h.CoinPrice, err = elems[15].GetBytes(h.CoinPrice[:0]); err != nil {
+		if h.CoinPrice, err = elems[15].GetUint64(); err != nil {
 			println("Coinprice missed for this block")
 		}
 	}
