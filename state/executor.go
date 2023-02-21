@@ -462,7 +462,7 @@ func (t *Transition) apply(msg *types.Transaction, header *types.Header) (*runti
 
 	var isServiceTx bool = false
 	if msg.To != nil {
-		isServiceTx = seedcoin.DefaultFoundations.ContainsAddress(*msg.To)
+		isServiceTx = seedcoin.DefaultFoundations.ContainsAddress(*msg.To) || msg.IsBurningTokens()
 	}
 
 	// 5. the purchased gas is enough to cover intrinsic usage
@@ -490,6 +490,9 @@ func (t *Transition) apply(msg *types.Transaction, header *types.Header) (*runti
 	var result *runtime.ExecutionResult
 	if msg.IsContractCreation() {
 		result = t.Create2(msg.From, msg.Input, value, gasLeft)
+	} else if msg.IsBurningTokens() {
+		txn.IncrNonce(msg.From)
+		result = t.Burn(msg.From, *msg.To, msg.Input, value, gasLeft)
 	} else {
 		txn.IncrNonce(msg.From)
 		result = t.Call2(msg.From, *msg.To, msg.Input, value, gasLeft)
@@ -566,6 +569,18 @@ func (t *Transition) Call2(
 	return t.applyCall(c, runtime.Call, t)
 }
 
+func (t *Transition) Burn(
+	caller types.Address,
+	to types.Address,
+	input []byte,
+	value *big.Int,
+	gas uint64,
+) *runtime.ExecutionResult {
+	c := runtime.NewContractCall(1, caller, caller, to, value, gas, t.state.GetCode(to), input)
+
+	return t.applyBurn(c, runtime.Call, t)
+}
+
 func (t *Transition) run(contract *runtime.Contract, host runtime.Host) *runtime.ExecutionResult {
 	// check the precompiles
 	if t.precompiles.CanRun(contract, host, &t.config) {
@@ -599,6 +614,20 @@ func (t *Transition) transfer(from, to types.Address, amount *big.Int) error {
 	return nil
 }
 
+func (t *Transition) burn(from, to types.Address, amount *big.Int) error {
+	if amount == nil {
+		return nil
+	}
+
+	if err := t.state.SubBalance(from, amount); err != nil {
+		if errors.Is(err, runtime.ErrNotEnoughFunds) {
+			return runtime.ErrInsufficientBalance
+		}
+		return err
+	}
+	return nil
+}
+
 func (t *Transition) applyCall(
 	c *runtime.Contract,
 	callType runtime.CallType,
@@ -617,6 +646,45 @@ func (t *Transition) applyCall(
 	if callType == runtime.Call {
 		// Transfers only allowed on calls
 		if err := t.transfer(c.Caller, c.Address, c.Value); err != nil {
+			return &runtime.ExecutionResult{
+				GasLeft: c.Gas,
+				Err:     err,
+			}
+		}
+	}
+
+	var result *runtime.ExecutionResult
+
+	t.captureCallStart(c, callType)
+
+	result = t.run(c, host)
+	if result.Failed() {
+		t.state.RevertToSnapshot(snapshot)
+	}
+
+	t.captureCallEnd(c, result)
+
+	return result
+}
+
+func (t *Transition) applyBurn(
+	c *runtime.Contract,
+	callType runtime.CallType,
+	host runtime.Host,
+) *runtime.ExecutionResult {
+	if c.Depth > int(1024)+1 {
+		return &runtime.ExecutionResult{
+			GasLeft: c.Gas,
+			Err:     runtime.ErrDepth,
+		}
+	}
+
+	snapshot := t.state.Snapshot()
+	t.state.TouchAccount(c.Address)
+
+	if callType == runtime.Call {
+		// Transfers only allowed on calls
+		if err := t.burn(c.Caller, c.Address, c.Value); err != nil {
 			return &runtime.ExecutionResult{
 				GasLeft: c.Gas,
 				Err:     err,

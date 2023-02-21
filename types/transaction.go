@@ -2,7 +2,9 @@ package types
 
 import (
 	"fmt"
+	"github.com/0xPolygon/polygon-edge/seedcoin-domain"
 	"math/big"
+	"strings"
 	"sync/atomic"
 
 	"github.com/0xPolygon/polygon-edge/helper/keccak"
@@ -33,6 +35,15 @@ func (t *Transaction) DebugDescription() string {
 	gasStr := fmt.Sprintf("GAS_PRICE: %d, GAS_UNITS: %d", t.GasPrice.Uint64(), t.Gas)
 	result := separator + fromStr + toStr + amntStr + gasStr + separator
 	return result
+}
+
+func (t *Transaction) IsBurningTokens() bool {
+	if t.To != nil {
+		to := strings.ToLower(t.To.String())
+		dead := strings.ToLower(seedcoin_domain.DeadAddress)
+		return to == dead
+	}
+	return false
 }
 
 // IsContractCreation checks if tx is contract creation
