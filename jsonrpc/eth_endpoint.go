@@ -621,13 +621,7 @@ func (e *Eth) transactionEstimateGas(arg *txnArgs, rawNum *BlockNumber) (interfa
 	for lowEnd < highEnd {
 		mid := (lowEnd + highEnd) / 2
 
-		failed, testErr := testTransaction(mid, true)
-		if testErr != nil &&
-			!isEVMRevertError(testErr) {
-			// Reverts are ignored in the binary search, but are checked later on
-			// during the execution for the optimal gas limit found
-			return 0, testErr
-		}
+		failed, _ := testTransaction(mid, true)
 
 		if failed {
 			// If the transaction failed => increase the gas
@@ -825,13 +819,7 @@ func (e *Eth) scEstimateGas(arg *txnArgs, rawNum *BlockNumber) (interface{}, err
 	for lowEnd < highEnd {
 		mid := (lowEnd + highEnd) / 2
 
-		failed, testErr := testTransaction(mid, true)
-		if testErr != nil &&
-			!isEVMRevertError(testErr) {
-			// Reverts are ignored in the binary search, but are checked later on
-			// during the execution for the optimal gas limit found
-			return 0, testErr
-		}
+		failed, _ := testTransaction(mid, true)
 
 		if failed {
 			// If the transaction failed => increase the gas
