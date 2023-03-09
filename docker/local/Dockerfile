@@ -17,10 +17,12 @@ WORKDIR /polygon-edge
 
 COPY ./genesis-bootnode-replacer/main.go /polygon-edge/genesis-bootnode-replacer/main.go
 COPY --from=builder /polygon-edge/polygon-edge ./
-COPY --from=builder /polygon-edge/.env ./ 
+COPY --from=builder /polygon-edge/.env ./
 COPY ./docker/local/polygon-edge.sh ./
-COPY ./chain/chains/seedcoin.json /genesis/seedcoin-template.json
-RUN chmod 0777 /genesis/seedcoin-template.json
+COPY ./chain/chains/seedcoin.json /data/seedcoin-template.json
+COPY ./core-contracts/artifacts ./core-contracts/artifacts
+
+RUN chmod 0777 /data/seedcoin-template.json
 RUN chmod 0777 polygon-edge.sh
 
 # Expose json-rpc, libp2p and grpc ports
