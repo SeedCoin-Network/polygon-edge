@@ -42,11 +42,6 @@ func (g *GenesisGenError) GetType() string {
 	return g.errorType
 }
 
-type premineInfo struct {
-	address types.Address
-	balance *big.Int
-}
-
 // verifyGenesisExistence checks if the genesis file at the specified path is present
 func verifyGenesisExistence(genesisPath string) *GenesisGenError {
 	_, err := os.Stat(genesisPath)
@@ -67,10 +62,17 @@ func verifyGenesisExistence(genesisPath string) *GenesisGenError {
 	return nil
 }
 
-// parsePremineInfo parses provided premine information and returns premine address and premine balance
-func parsePremineInfo(premineInfoRaw string) (*premineInfo, error) {
-	address := types.ZeroAddress
-	val := command.DefaultPremineBalance
+type PremineInfo struct {
+	Address types.Address
+	Balance *big.Int
+}
+
+// ParsePremineInfo parses provided premine information and returns premine address and premine balance
+func ParsePremineInfo(premineInfoRaw string) (*PremineInfo, error) {
+	var (
+		address types.Address
+		val     = command.DefaultPremineBalance
+	)
 
 	if delimiterIdx := strings.Index(premineInfoRaw, ":"); delimiterIdx != -1 {
 		// <addr>:<balance>
@@ -85,7 +87,34 @@ func parsePremineInfo(premineInfoRaw string) (*premineInfo, error) {
 		return nil, fmt.Errorf("failed to parse amount %s: %w", val, err)
 	}
 
-	return &premineInfo{address: address, balance: amount}, nil
+	return &PremineInfo{Address: address, Balance: amount}, nil
+}
+
+// parseTrackerStartBlocks parses provided event tracker start blocks configuration.
+// It is set in a following format: <contractAddress>:<startBlock>.
+// In case smart contract address isn't provided in the string, it is assumed its starting block is 0 implicitly.
+func parseTrackerStartBlocks(trackerStartBlocksRaw []string) (map[types.Address]uint64, error) {
+	trackerStartBlocksConfig := make(map[types.Address]uint64, len(trackerStartBlocksRaw))
+
+	for _, startBlockRaw := range trackerStartBlocksRaw {
+		delimiterIdx := strings.Index(startBlockRaw, ":")
+		if delimiterIdx == -1 {
+			return nil, fmt.Errorf("invalid event tracker start block configuration provided: %s", trackerStartBlocksRaw)
+		}
+
+		// <contractAddress>:<startBlock>
+		address := types.StringToAddress(startBlockRaw[:delimiterIdx])
+		startBlockRaw := startBlockRaw[delimiterIdx+1:]
+
+		startBlock, err := strconv.ParseUint(startBlockRaw, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse provided start block %s: %w", startBlockRaw, err)
+		}
+
+		trackerStartBlocksConfig[address] = startBlock
+	}
+
+	return trackerStartBlocksConfig, nil
 }
 
 // GetValidatorKeyFiles returns file names which has validator secrets
@@ -147,7 +176,7 @@ func ReadValidatorsByPrefix(dir, prefix string) ([]*polybft.Validator, error) {
 			BlsPrivateKey: account.Bls,
 			BlsKey:        hex.EncodeToString(account.Bls.PublicKey().Marshal()),
 			BlsSignature:  blsSignature,
-			NodeID:        nodeID,
+			MultiAddr:     fmt.Sprintf("/ip4/%s/tcp/%d/p2p/%s", "127.0.0.1", bootnodePortStart+int64(i), nodeID),
 		}
 	}
 

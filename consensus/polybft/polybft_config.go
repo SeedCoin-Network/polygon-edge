@@ -43,6 +43,7 @@ type PolyBFTConfig struct {
 	// Address of the system contracts, as of now (testing) this is populated automatically during genesis
 	ValidatorSetAddr  types.Address `json:"validatorSetAddr"`
 	StateReceiverAddr types.Address `json:"stateReceiverAddr"`
+	InitialTrieRoot   types.Hash    `json:"initialTrieRoot"`
 }
 
 // GetPolyBFTConfig deserializes provided chain config and returns PolyBFTConfig
@@ -64,11 +65,12 @@ func GetPolyBFTConfig(chainConfig *chain.Chain) (PolyBFTConfig, error) {
 
 // BridgeConfig is the rootchain bridge configuration
 type BridgeConfig struct {
-	BridgeAddr             types.Address `json:"stateSenderAddr"`
-	CheckpointAddr         types.Address `json:"checkpointAddr"`
-	RootERC20PredicateAddr types.Address `json:"rootERC20PredicateAddr"`
-	RootNativeERC20Addr    types.Address `json:"rootNativeERC20Addr"`
-	JSONRPCEndpoint        string        `json:"jsonRPCEndpoint"`
+	BridgeAddr              types.Address            `json:"stateSenderAddr"`
+	CheckpointAddr          types.Address            `json:"checkpointAddr"`
+	RootERC20PredicateAddr  types.Address            `json:"rootERC20PredicateAddr"`
+	RootNativeERC20Addr     types.Address            `json:"rootNativeERC20Addr"`
+	JSONRPCEndpoint         string                   `json:"jsonRPCEndpoint"`
+	EventTrackerStartBlocks map[types.Address]uint64 `json:"eventTrackerStartBlocks"`
 }
 
 func (p *PolyBFTConfig) IsBridgeEnabled() bool {
@@ -82,7 +84,7 @@ type Validator struct {
 	BlsKey        string
 	BlsSignature  string
 	Balance       *big.Int
-	NodeID        string
+	MultiAddr     string
 }
 
 type validatorRaw struct {
@@ -90,11 +92,11 @@ type validatorRaw struct {
 	BlsKey       string        `json:"blsKey"`
 	BlsSignature string        `json:"blsSignature"`
 	Balance      *string       `json:"balance"`
-	NodeID       string        `json:"nodeId"`
+	MultiAddr    string        `json:"multiAddr"`
 }
 
 func (v *Validator) MarshalJSON() ([]byte, error) {
-	raw := &validatorRaw{Address: v.Address, BlsKey: v.BlsKey, NodeID: v.NodeID, BlsSignature: v.BlsSignature}
+	raw := &validatorRaw{Address: v.Address, BlsKey: v.BlsKey, MultiAddr: v.MultiAddr, BlsSignature: v.BlsSignature}
 	raw.Balance = types.EncodeBigInt(v.Balance)
 
 	return json.Marshal(raw)
@@ -112,7 +114,7 @@ func (v *Validator) UnmarshalJSON(data []byte) error {
 	v.Address = raw.Address
 	v.BlsKey = raw.BlsKey
 	v.BlsSignature = raw.BlsSignature
-	v.NodeID = raw.NodeID
+	v.MultiAddr = raw.MultiAddr
 	v.Balance, err = types.ParseUint256orHex(raw.Balance)
 
 	if err != nil {
@@ -181,6 +183,12 @@ func (v *Validator) ToValidatorMetadata() (*ValidatorMetadata, error) {
 	}
 
 	return metadata, nil
+}
+
+// String implements fmt.Stringer interface
+func (v *Validator) String() string {
+	return fmt.Sprintf("Address=%s; Balance=%d; P2P Multi addr=%s; BLS Key=%s;",
+		v.Address, v.Balance, v.MultiAddr, v.BlsKey)
 }
 
 // RootchainConfig contains information about rootchain contract addresses

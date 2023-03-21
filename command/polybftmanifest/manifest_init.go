@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/command/genesis"
 	"github.com/0xPolygon/polygon-edge/consensus/polybft"
 	"github.com/0xPolygon/polygon-edge/types"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +28,6 @@ const (
 	defaultValidatorPrefixPath = "test-chain-"
 	defaultManifestPath        = "./manifest.json"
 
-	nodeIDLength       = 53
 	ecdsaAddressLength = 40
 	blsKeyLength       = 256
 	blsSignatureLength = 128
@@ -79,14 +80,17 @@ func setFlags(cmd *cobra.Command) {
 		&params.validators,
 		validatorsFlag,
 		[]string{},
-		"validators defined by user (format: <node id>:<ECDSA address>:<public BLS key>:<BLS signature>)",
+		"validators defined by user (format: <P2P multi address>:<ECDSA address>:<public BLS key>:<BLS signature>)",
 	)
 
-	cmd.Flags().StringVar(
+	cmd.Flags().StringArrayVar(
 		&params.premineValidators,
 		premineValidatorsFlag,
-		command.DefaultPremineBalance,
-		"the amount which will be pre-mined to all the validators",
+		[]string{},
+		fmt.Sprintf(
+			"the premined validators and balances (format: <address>:<balance>). Default premined balance: %s",
+			command.DefaultPremineBalance,
+		),
 	)
 
 	cmd.Flags().Int64Var(
@@ -125,7 +129,7 @@ type manifestInitParams struct {
 	manifestPath         string
 	validatorsPath       string
 	validatorsPrefixPath string
-	premineValidators    string
+	premineValidators    []string
 	validators           []string
 	chainID              int64
 }
@@ -135,53 +139,66 @@ func (p *manifestInitParams) validateFlags() error {
 		return fmt.Errorf("provided validators path '%s' doesn't exist", p.validatorsPath)
 	}
 
-	if _, err := types.ParseUint256orHex(&p.premineValidators); err != nil {
-		return fmt.Errorf("invalid premine validators balance provided '%s': %w", p.premineValidators, err)
-	}
-
 	return nil
 }
 
 // getValidatorAccounts gathers validator accounts info either from CLI or from provided local storage
 func (p *manifestInitParams) getValidatorAccounts() ([]*polybft.Validator, error) {
-	balance, err := types.ParseUint256orHex(&params.premineValidators)
+	// populate validators premine info
+	premineMap := make(map[types.Address]*genesis.PremineInfo, len(p.premineValidators))
+
+	for _, premine := range p.premineValidators {
+		premineInfo, err := genesis.ParsePremineInfo(premine)
+		if err != nil {
+			return nil, err
+		}
+
+		premineMap[premineInfo.Address] = premineInfo
+	}
+
+	// parse default validators' balance
+	defaultBalanceRaw := command.DefaultPremineBalance
+
+	defaultBalance, err := types.ParseUint256orHex(&defaultBalanceRaw)
 	if err != nil {
-		return nil, fmt.Errorf("provided invalid premine validators balance: %s", params.premineValidators)
+		return nil, fmt.Errorf("provided invalid premine validators balance: %s", defaultBalanceRaw)
 	}
 
 	if len(p.validators) > 0 {
 		validators := make([]*polybft.Validator, len(p.validators))
 		for i, validator := range p.validators {
 			parts := strings.Split(validator, ":")
-
 			if len(parts) != 4 {
 				return nil, fmt.Errorf("expected 4 parts provided in the following format "+
-					"<nodeId:ECDSA address:blsKey:blsSignature>, but got %d part(s)",
+					"<P2P multi address:ECDSA address:public BLS key:BLS signature>, but got %d part(s)",
 					len(parts))
 			}
 
-			if len(parts[0]) != nodeIDLength {
-				return nil, fmt.Errorf("invalid node id: %s", parts[0])
+			if _, err := multiaddr.NewMultiaddr(parts[0]); err != nil {
+				return nil, fmt.Errorf("invalid P2P multi address '%s' provided: %w ", parts[0], err)
 			}
 
-			if len(parts[1]) != ecdsaAddressLength {
-				return nil, fmt.Errorf("invalid address: %s", parts[1])
+			trimmedAddress := strings.TrimPrefix(parts[1], "0x")
+			if len(trimmedAddress) != ecdsaAddressLength {
+				return nil, fmt.Errorf("invalid ECDSA address: %s", parts[1])
 			}
 
-			if len(strings.TrimPrefix(parts[2], "0x")) != blsKeyLength {
-				return nil, fmt.Errorf("invalid bls key: %s", parts[2])
+			trimmedBLSKey := strings.TrimPrefix(parts[2], "0x")
+			if len(trimmedBLSKey) != blsKeyLength {
+				return nil, fmt.Errorf("invalid BLS key: %s", parts[2])
 			}
 
 			if len(parts[3]) != blsSignatureLength {
-				return nil, fmt.Errorf("invalid bls signature: %s", parts[3])
+				return nil, fmt.Errorf("invalid BLS signature: %s", parts[3])
 			}
 
+			addr := types.StringToAddress(trimmedAddress)
 			validators[i] = &polybft.Validator{
-				NodeID:       parts[0],
-				Address:      types.StringToAddress(parts[1]),
-				BlsKey:       parts[2],
+				MultiAddr:    parts[0],
+				Address:      addr,
+				BlsKey:       trimmedBLSKey,
 				BlsSignature: parts[3],
-				Balance:      balance,
+				Balance:      getBalance(addr, premineMap, defaultBalance),
 			}
 		}
 
@@ -199,10 +216,21 @@ func (p *manifestInitParams) getValidatorAccounts() ([]*polybft.Validator, error
 	}
 
 	for _, v := range validators {
-		v.Balance = balance
+		v.Balance = getBalance(v.Address, premineMap, defaultBalance)
 	}
 
 	return validators, nil
+}
+
+// getBalance retrieves balance from the premine map or if not provided, returns default balance
+func getBalance(addr types.Address, premineMap map[types.Address]*genesis.PremineInfo,
+	defaultBalance *big.Int) *big.Int {
+	balance := defaultBalance
+	if premine, exists := premineMap[addr]; exists {
+		balance = premine.Balance
+	}
+
+	return balance
 }
 
 func (p *manifestInitParams) getResult() command.CommandResult {
